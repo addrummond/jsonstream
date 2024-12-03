@@ -54,7 +54,7 @@ halt on errors.
 
 The JSON standard specifies only the syntactic format of numeric literals. The
 interpretation of very large and very small values may therefore vary.
-JSONStream does not automatically parse numeric literals and therefore does not
+JSONStream does not automatically parse numeric literals and so does not
 force any particular handling of out of range literals or other edge cases.
 
 The convenience methods `AsInt`, `AsInt32`, `AsInt64`, `AsFloat32`, and
