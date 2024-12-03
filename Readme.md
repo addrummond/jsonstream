@@ -63,7 +63,7 @@ errors to the associated `Parser` object if a value is out of range. Decode
 errors can be accessed and manipulated via the `PopDecodeErrorIf`,
 `DecodeError`, and `LastDecodeError` methods of `Parser`.
 
-If none of the above methods has the desired behavior, the `Value` field of a
+If none of the `As*` methods has the desired behavior, the `Value` field of a
 `Token` struct may be accessed directly in order to implement custom parsing of
 numeric values.
 
