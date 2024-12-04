@@ -145,13 +145,17 @@ func TestTokenize(t *testing.T) {
 
 	t.Run("Error recovery", func(t *testing.T) {
 		t.Run("Number with leading zeros", func(t *testing.T) {
-			const input = `{"foo": 01}`
+			const input = `{"foo": 01, "bar": [02, -01, 3, 0e2]}`
 			const expectedTokSeq = `
 {1:0 ObjectStart }
-{1:6 Error: Unexpected token inside object}
-{1:8 Error: Unexpected token}
-{1:10 Error: Trailing ','}
-{1:10 ObjectEnd }
+{1:8 Error: Leading zeros not permitted in numbers}
+{1:19 ArrayStart bar=}
+{1:20 Error: Leading zeros not permitted in numbers}
+{1:24 Error: Leading zeros not permitted in numbers}
+{1:29 Number 3}
+{1:32 Number 0e2}
+{1:35 ArrayEnd }
+{1:36 ObjectEnd }
 `
 
 			t.Logf("%v\n", tokSeq(input, allowComments))

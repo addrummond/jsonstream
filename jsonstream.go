@@ -49,6 +49,8 @@ const (
 	// An unexpected character was encountered while tokenizing the input.
 	ErrorUnexpectedCharacter
 	// A numeric literal has leading zeros (not permitted by the JSON standard).
+	// Tokens with this kind can also be treated as tokens of kind Number, if you
+	// wish to be liberal in what you accept.
 	ErrorLeadingZerosNotPermitted
 	// A decimal point was not follwed by a digit.
 	ErrorExpectedDigitAfterDecimalPoint
@@ -633,7 +635,7 @@ func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
 				if !tokObject(yield) {
 					return false
 				}
-			case String, Number, True, False, Null:
+			case String, Number, True, False, Null, ErrorLeadingZerosNotPermitted:
 				if !yield(valtok) {
 					return false
 				}
@@ -736,7 +738,7 @@ func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
 				if !tokObject(yield) {
 					return false
 				}
-			case String, Number, True, False, Null:
+			case String, Number, True, False, Null, ErrorLeadingZerosNotPermitted:
 				if !yield(valtok) {
 					return false
 				}
@@ -965,13 +967,7 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 						pos++ // continue to parse number ignoring whatever this char was (after yielding error)
 					}
 				}
-				// Peek to check that we don't have leading zero
-				if inp[pos] == '0' && pos+1 < len(inp) && inp[pos+1] >= '0' && inp[pos+1] <= '9' {
-					if !yieldErr(ErrorLeadingZerosNotPermitted, line, pos-lineStart, "Leading zeros not permitted") {
-						return
-					}
-					// continue to parse number ignoring leading zeros (after yielding error)
-				}
+				firstDigitI := pos // we'll check later for a leading zero here
 				pos++
 				for pos < len(inp) && inp[pos] >= '0' && inp[pos] <= '9' {
 					pos++
@@ -1018,7 +1014,12 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 					}
 				}
 				nextMustBeSep = true
-				if !yield(Token{Line: line, Col: startCol, Start: start, End: pos - 1, Kind: Number, Value: inp[start:pos]}) {
+				numTok := Token{Line: line, Col: startCol, Start: start, End: pos - 1, Kind: Number, Value: inp[start:pos]}
+				if inp[firstDigitI] == '0' && firstDigitI+1 < len(inp) && inp[firstDigitI+1] >= '0' && inp[firstDigitI+1] <= '9' {
+					numTok.Kind = ErrorLeadingZerosNotPermitted
+					numTok.ErrorMsg = "Leading zeros not permitted in numbers"
+				}
+				if !yield(numTok) {
 					return
 				}
 			case '"':
