@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 )
 
+// Kind represents the kind of a JSON token.
 type Kind int
 
 const (
@@ -69,6 +70,7 @@ const (
 	primval = (1 << 30)
 )
 
+// IsError returns true for Error* token kinds and false for all other tokens.
 func IsError(k Kind) bool {
 	return k&isError != 0
 }
