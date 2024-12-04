@@ -529,7 +529,7 @@ func TestAsInt64(t *testing.T) {
 	})
 }
 
-// Check that parser doesn't panic on random input
+// Check that parser doesn't panic or loop indefinitely on random input
 func TestFuzz(t *testing.T) {
 	rand := rand.New(rand.NewSource(123))
 
