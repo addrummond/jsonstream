@@ -117,6 +117,10 @@ func parseIntArray(input []byte) ([]int, error) {
 	ints := make([]int, 0)
 	var p jsonstream.Parser
 	for t := range p.Tokenize(input) {
+		if err := t.AsError(); err != nil {
+			return nil, err
+		}
+
 		if state == 0 {
 			state++
 			if t.Kind != jsonstream.ArrayStart {
@@ -153,6 +157,10 @@ func parseObjectWithStringValues(input []byte) (map[string]string, error) {
 	var p jsonstream.Parser
 	dict := make(map[string]string)
 	for t := range p.Tokenize(input) {
+		if err := t.AsError(); err != nil {
+			return nil, err
+		}
+
 		if state == 0 {
 			state++
 			if t.Kind != jsonstream.ObjectStart {

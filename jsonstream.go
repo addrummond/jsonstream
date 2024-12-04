@@ -145,6 +145,19 @@ func (t Token) String() string {
 	return fmt.Sprintf("%v:%v %v %v%s", t.Line, t.Col, t.Kind, key, t.Value)
 }
 
+func (t Token) Error() string {
+	return t.String()
+}
+
+// AsError returns an error value if the token is an error token or nil
+// otherwise.
+func (t Token) AsError() error {
+	if IsError(t.Kind) {
+		return fmt.Errorf("%w", t)
+	}
+	return nil
+}
+
 // AsBool returns the token's value as a bool. Its return value is defined only
 // for tokens where Kind = True or Kind = False.
 func (t *Token) AsBool() bool {
