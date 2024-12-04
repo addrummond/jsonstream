@@ -267,15 +267,16 @@ const float64ExactIntMax = 9007199254740992
 
 // AsInt returns the token's value as an int. Its return value is defined
 // only for tokens where Kind = Number. If the value is not an integer or does
-// not fit in an int, an error is returned. The function succeeds for in-range
-// integer values specified using floating point syntax (e.g. '1.5e1', which
-// evaluates to 15).
+// not fit in an int, then a decode error is added to the associated Parser. A
+// decode error is not added for in-range integer values specified
+// using floating point syntax (e.g. '1.5e1', which evaluates to 15). If the
+// decode error satisfies IsNotAnIntegerError(err) or IsOutOfRangeError(err)
+// then the returned int value approximates the value of the float as
+// closely as possible. The function may therefore be used to parse floating
+// point values as the nearest int value.
 //
-// If the error value satisfies IsNotAnIntegerError(err) or
-// IsOutOfRangeError(err) then the returned int value attempts to
-// approximate the value of the float as closely as possible. The function may
-// therefore be used to parse floating point values as the nearest int value
-// (by ignoring 'not an integer' errors and using the returned int value).
+// For more on decode errors see the following methods of Parser: DecodeError(),
+// LastDecodeError(), DecodeErrors(), PopDecodeErrorIf().
 func (t *Token) AsInt() int {
 	if math.MaxUint == 0xFFFFFFFF {
 		return int(t.AsInt32())
