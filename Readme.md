@@ -79,10 +79,10 @@ Token{Kind: Number, Value: []byte("3"), ...}
 Token{Kind: ArrayEnd, ...}
 ```
 
-### Parsing dictionaries
+### Parsing objects
 
-Within a dictionary each token represents a value. The associated key is
-obtained via the `Key` field. The sequence of tokens for the dictionary
+Within an object each token represents a value. The associated key is
+obtained via the `Key` field. The sequence of tokens for the object
 `{"foo": "bar", "baz": "amp"}` is as follows:
 
 ```go

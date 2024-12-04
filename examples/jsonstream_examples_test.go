@@ -35,7 +35,7 @@ func parseIntArray(input []byte) ([]int, error) {
 	return ints, p.DecodeError()
 }
 
-func parseDictionaryWithStringValues(input []byte) (map[string]string, error) {
+func parseObjectWithStringValues(input []byte) (map[string]string, error) {
 	state := 0
 	var p jsonstream.Parser
 	dict := make(map[string]string)
@@ -91,8 +91,8 @@ func TestParseIntArray(t *testing.T) {
 	}
 }
 
-func TestParseDictionaryWithStringValues(t *testing.T) {
-	obj, err := parseDictionaryWithStringValues([]byte(`{"a":"bbb","cc":"dd","ee":"ff","":"gggg"}`))
+func TestParseObjectWithStringValues(t *testing.T) {
+	obj, err := parseObjectWithStringValues([]byte(`{"a":"bbb","cc":"dd","ee":"ff","":"gggg"}`))
 	if err != nil {
 		t.Fatalf("Error: %v", err)
 	}
