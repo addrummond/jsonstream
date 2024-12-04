@@ -533,12 +533,14 @@ func TestAsInt64(t *testing.T) {
 	})
 }
 
+const fuzzIterations = 10000
+
 // Check that parser doesn't panic or loop indefinitely on random input
 func TestFuzz(t *testing.T) {
 	rand := rand.New(rand.NewSource(123))
 
 	t.Run("random bytes", func(t *testing.T) {
-		for i := 0; i < 10000; i++ {
+		for i := 0; i < fuzzIterations; i++ {
 			a := make([]byte, i)
 			rand.Read(a)
 			var p Parser
@@ -559,7 +561,7 @@ func TestFuzz(t *testing.T) {
 			c += sz
 		}
 
-		for i := 0; i < 10000; i++ {
+		for i := 0; i < fuzzIterations; i++ {
 			a := make([]byte, i)
 			j := 0
 			for j < len(a) {
