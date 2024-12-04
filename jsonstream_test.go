@@ -2,7 +2,6 @@ package jsonstream
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"iter"
 	"math"
@@ -49,25 +48,25 @@ func TestTokenize(t *testing.T) {
 `
 
 		const expectedTokSeq = `
-{2:1 ArrayStart  "["}
-{2:2 String xxx "\"xxx\""}
-{2:9 ArrayStart  "["}
-{2:10 String baAr "\"ba\\u0041r\""}
-{2:21 ArrayEnd  "]"}
-{2:24 String yyy "\"yyy\""}
-{2:31 ArrayStart  "["}
-{2:33 Comment /* a comment inside */ "/* a comment inside */"}
-{2:56 ArrayEnd  "]"}
-{2:58 Comment // a comment "// a comment"}
-{3:3 ObjectStart  "{"}
-{3:11 String aaa=bbb "\"bbb\""}
-{3:23 String x=y "\"y\""}
-{3:26 ObjectEnd  "}"}
-{3:29 String bbb "\"bbb\""}
-{3:36 ObjectStart  "{"}
-{3:48 Number numeric=1.4e-99 "1.4e-99"}
-{3:56 ObjectEnd  "}"}
-{3:58 ArrayEnd  "]"}
+{2:1 ArrayStart }
+{2:2 String xxx}
+{2:9 ArrayStart }
+{2:10 String baAr}
+{2:21 ArrayEnd }
+{2:24 String yyy}
+{2:31 ArrayStart }
+{2:33 Comment /* a comment inside */}
+{2:56 ArrayEnd }
+{2:58 Comment // a comment}
+{3:3 ObjectStart }
+{3:11 String aaa=bbb}
+{3:23 String x=y}
+{3:26 ObjectEnd }
+{3:29 String bbb}
+{3:36 ObjectStart }
+{3:48 Number numeric=1.4e-99}
+{3:56 ObjectEnd }
+{3:58 ArrayEnd }
 `
 		t.Logf("%v\n", tokSeq(input, allowComments))
 
@@ -83,23 +82,23 @@ func TestTokenize(t *testing.T) {
 `
 
 		const expectedTokSeq = `
-{2:1 ArrayStart  "["}
-{2:2 String xxx "\"xxx\""}
-{2:9 ArrayStart  "["}
-{2:10 String baAr "\"ba\\u0041r\""}
-{2:21 ArrayEnd  "]"}
-{2:24 String yyy "\"yyy\""}
-{2:31 ArrayStart  "["}
-{2:33 ArrayEnd  "]"}
-{3:3 ObjectStart  "{"}
-{3:11 String aaa=bbb "\"bbb\""}
-{3:23 String x=y "\"y\""}
-{3:26 ObjectEnd  "}"}
-{3:29 String bbb "\"bbb\""}
-{3:36 ObjectStart  "{"}
-{3:48 Number numeric=1.4e-99 "1.4e-99"}
-{3:56 ObjectEnd  "}"}
-{3:58 ArrayEnd  "]"}
+{2:1 ArrayStart }
+{2:2 String xxx}
+{2:9 ArrayStart }
+{2:10 String baAr}
+{2:21 ArrayEnd }
+{2:24 String yyy}
+{2:31 ArrayStart }
+{2:33 ArrayEnd }
+{3:3 ObjectStart }
+{3:11 String aaa=bbb}
+{3:23 String x=y}
+{3:26 ObjectEnd }
+{3:29 String bbb}
+{3:36 ObjectStart }
+{3:48 Number numeric=1.4e-99}
+{3:56 ObjectEnd }
+{3:58 ArrayEnd }
 `
 		t.Logf("%v\n", tokSeq(input, allowComments))
 
@@ -115,18 +114,52 @@ func TestTokenize(t *testing.T) {
 `
 
 		const expectedTokSeq = `
-{2:1 ArrayStart  "["}
-        {2:2 String xxx "\"xxx\""}
-        {2:9 ArrayStart  "["}
-        {2:10 String baAr "\"ba\\u0041r\""}
-        {2:21 ArrayEnd  "]"}
-        {2:24 String yyy "\"yyy\""}
-        {2:31 ArrayStart  "["}
-        {2:33 Error: Unexpected token inside array "\n"}
+{2:1 ArrayStart }
+{2:2 String xxx}
+{2:9 ArrayStart }
+{2:10 String baAr}
+{2:21 ArrayEnd }
+{2:24 String yyy}
+{2:31 ArrayStart }
+{2:33 Error: Unexpected token inside array}
+{2:56 ArrayEnd }
+{2:58 Error: Unexpected token inside array (expecting ',')}
+{3:1 Error: Unexpected ',' inside array}
+{3:3 ObjectStart }
+{3:11 String aaa=bbb}
+{3:23 String x=y}
+{3:26 ObjectEnd }
+{3:29 String bbb}
+{3:36 ObjectStart }
+{3:48 Number numeric=1.4e-99}
+{3:56 ObjectEnd }
+{3:58 ArrayEnd }
 `
 
 		t.Logf("%v\n", tokSeq(input, disallowComments))
 
+		if strings.TrimSpace(expectedTokSeq) != strings.TrimSpace(tokSeq(input, disallowComments)) {
+			t.Fatalf("Unexpected token sequence")
+		}
+	})
+
+	t.Run("Error recovery", func(t *testing.T) {
+		t.Run("Number with leading zeros", func(t *testing.T) {
+			const input = `{"foo": 01}`
+			const expectedTokSeq = `
+{1:0 ObjectStart }
+{1:6 Error: Unexpected token inside object}
+{1:8 Error: Unexpected token}
+{1:10 Error: Trailing ','}
+{1:10 ObjectEnd }
+`
+
+			t.Logf("%v\n", tokSeq(input, allowComments))
+
+			if strings.TrimSpace(expectedTokSeq) != strings.TrimSpace(tokSeq(input, disallowComments)) {
+				t.Fatalf("Unexpected token sequence")
+			}
+		})
 	})
 }
 
@@ -414,15 +447,10 @@ func tokSeq(inp string, comments int) string {
 	}
 
 	for t := range f([]byte(inp)) {
-		repr := inp[t.Start : t.End+1]
-		jrepr, err := json.Marshal(repr)
-		if err != nil {
-			panic(err)
-		}
 		if i != 0 {
 			sb.WriteByte('\n')
 		}
-		sb.WriteString(fmt.Sprintf("{%v %s}", t, jrepr))
+		sb.WriteString(fmt.Sprintf("{%v}", t))
 		i++
 	}
 	return sb.String()

@@ -134,7 +134,7 @@ func appendDecodeError(t *Token, err error) {
 
 func (t Token) String() string {
 	if IsError(t.Kind) {
-		return fmt.Sprintf("%v:%v Error: %v\n", t.Line, t.Col, t.ErrorMsg)
+		return fmt.Sprintf("%v:%v Error: %v", t.Line, t.Col, t.ErrorMsg)
 	}
 	var key string
 	if len(t.Key) > 0 {
@@ -581,8 +581,9 @@ func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
 					return
 				}
 			case ObjectEnd, ArrayEnd, comma, colon:
-				yieldErr(ErrorUnexpectedToken, t.Line, t.Col, "Unexpected token")
-				return
+				if !yieldErr(ErrorUnexpectedToken, t.Line, t.Col, "Unexpected token") {
+					return
+				}
 			default:
 				if !yield(t) {
 					return
@@ -592,10 +593,11 @@ func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
 	}
 
 	tokArray = func(yield func(Token) bool) bool {
-		yieldErr := func(errorKind Kind, line, col int, msg string) {
+		yieldErr := func(errorKind Kind, line, col int, msg string) bool {
 			if !haltedOnComment {
-				yield(mkErr(errorKind, line, col, msg))
+				return yield(mkErr(errorKind, line, col, msg))
 			}
+			return true
 		}
 
 		afterComma := false
@@ -608,8 +610,9 @@ func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
 
 			if valtok.Kind == ArrayEnd {
 				if afterComma {
-					yieldErr(ErrorTrailingComma, valtok.Line, valtok.Col, "Trailing ','")
-					return false
+					if !yieldErr(ErrorTrailingComma, valtok.Line, valtok.Col, "Trailing ','") {
+						return false
+					}
 				}
 				return yield(valtok)
 			}
@@ -633,9 +636,16 @@ func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
 				if !yield(valtok) {
 					return false
 				}
+			case comma:
+				afterComma = true
+				if !yieldErr(ErrorUnexpectedToken, valtok.Line, valtok.Col, "Unexpected ',' inside array") {
+					return false
+				}
+				continue
 			default:
-				yieldErr(ErrorUnexpectedToken, valtok.Line, valtok.Col, "Unexpected token inside array")
-				return false
+				if !yieldErr(ErrorUnexpectedToken, valtok.Line, valtok.Col, "Unexpected token inside array") {
+					return false
+				}
 			}
 
 			t, ok := next(yield)
@@ -648,18 +658,20 @@ func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
 				return yield(t)
 			}
 			if t.Kind != comma {
-				yieldErr(ErrorUnexpectedToken, t.Line, t.Col, "Unexpected token inside array (expecing ',')")
-				return false
+				if !yieldErr(ErrorUnexpectedToken, t.Line, t.Col, "Unexpected token inside array (expecting ',')") {
+					return false
+				}
 			}
 			afterComma = true
 		}
 	}
 
 	tokObject = func(yield func(Token) bool) bool {
-		yieldErr := func(errorKind Kind, line, col int, msg string) {
+		yieldErr := func(errorKind Kind, line, col int, msg string) bool {
 			if !haltedOnComment {
-				yield(mkErr(errorKind, line, col, msg))
+				return yield(mkErr(errorKind, line, col, msg))
 			}
+			return true
 		}
 
 		afterComma := false
@@ -672,21 +684,25 @@ func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
 
 			if keytok.Kind == ObjectEnd {
 				if afterComma {
-					yieldErr(ErrorTrailingComma, keytok.Line, keytok.Col, "Trailing ','")
-					return false
+					if !yieldErr(ErrorTrailingComma, keytok.Line, keytok.Col, "Trailing ','") {
+						return false
+					}
 				}
 				return yield(keytok)
 			}
 
 			if keytok.Kind != String {
-				yieldErr(ErrorUnexpectedToken, keytok.Line, keytok.Col, "Unexpected token inside object (expecting key)")
-				return false
+				if !yieldErr(ErrorUnexpectedToken, keytok.Line, keytok.Col, "Unexpected token inside object (expecting key)") {
+					return false
+				}
+				keytok.Value = notNilEmptyByteSlice // error recovery; set empty key
 			}
 
 			t, ok := next(yield)
 			if !ok || t.Kind != colon {
-				yieldErr(ErrorUnexpectedToken, t.Line, t.Col, "Unexpected token inside object (expecting ':')")
-				return false
+				if !yieldErr(ErrorUnexpectedToken, t.Line, t.Col, "Unexpected token inside object (expecting ':')") {
+					return false
+				}
 			}
 
 			valtok, ok := next(yield)
@@ -724,8 +740,9 @@ func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
 					return false
 				}
 			default:
-				yieldErr(ErrorUnexpectedToken, t.Line, t.Col, "Unexpected token inside object")
-				return false
+				if !yieldErr(ErrorUnexpectedToken, t.Line, t.Col, "Unexpected token inside object") {
+					return false
+				}
 			}
 
 			t, ok = next(yield)
@@ -738,8 +755,9 @@ func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
 				return yield(t)
 			}
 			if t.Kind != comma {
-				yieldErr(ErrorUnexpectedToken, t.Line, t.Col, "Unexpected token")
-				return false
+				if !yieldErr(ErrorUnexpectedToken, t.Line, t.Col, "Unexpected token") {
+					return false
+				}
 			}
 			afterComma = true
 		}
@@ -776,8 +794,11 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 				case ' ', '\r', '\n', '\t', '/', ':', ',', '[', ']', '{', '}':
 					nextMustBeSep = false
 				default:
-					yieldErr(ErrorUnexpectedCharacter, line, pos-lineStart, "Unexpected character")
-					return
+					if !yieldErr(ErrorUnexpectedCharacter, line, pos-lineStart, "Unexpected character") {
+						return
+					}
+					pos++
+					continue parseloop
 				}
 			}
 
@@ -795,8 +816,11 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 				startCol := pos - lineStart
 				pos++
 				if pos >= len(inp) {
-					yieldErr(ErrorUnexpectedCharacter, line, pos-lineStart, "Unexpected '/'")
-					return
+					if !yieldErr(ErrorUnexpectedCharacter, line, pos-lineStart, "Unexpected '/'") {
+						return
+					}
+					pos++
+					continue parseloop
 				}
 				switch inp[pos] {
 				case '*':
@@ -843,8 +867,11 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 						}
 					}
 				default:
-					yieldErr(ErrorUnexpectedToken, line, pos-lineStart, "Unexpected '/'")
-					return
+					if !yieldErr(ErrorUnexpectedToken, line, pos-lineStart, "Unexpected '/'") {
+						return
+					}
+					pos++
+					continue parseloop
 				}
 			case ':':
 				if !yield(Token{Line: line, Col: pos - lineStart, Start: pos, End: pos, Kind: colon}) {
@@ -880,8 +907,11 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 				start := pos
 				startCol := pos - lineStart
 				if pos+3 >= len(inp) || inp[pos+1] != 'r' || inp[pos+2] != 'u' || inp[pos+3] != 'e' {
-					yieldErr(ErrorUnexpectedCharacter, line, pos-lineStart, "Unexpected 't'")
-					return
+					if !yieldErr(ErrorUnexpectedCharacter, line, pos-lineStart, "Unexpected 't'") {
+						return
+					}
+					pos++
+					continue parseloop
 				}
 				pos += 4
 				nextMustBeSep = true
@@ -892,8 +922,11 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 				start := pos
 				startCol := pos - lineStart
 				if pos+4 >= len(inp) || inp[pos+1] != 'a' || inp[pos+2] != 'l' || inp[pos+3] != 's' || inp[pos+4] != 'e' {
-					yieldErr(ErrorUnexpectedCharacter, line, startCol, "Unexpected 'f'")
-					return
+					if !yieldErr(ErrorUnexpectedCharacter, line, startCol, "Unexpected 'f'") {
+						return
+					}
+					pos++
+					continue parseloop
 				}
 				pos += 5
 				nextMustBeSep = true
@@ -904,8 +937,11 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 				start := pos
 				startCol := pos - lineStart
 				if pos+3 >= len(inp) || inp[pos+1] != 'u' || inp[pos+2] != 'l' || inp[pos+3] != 'l' {
-					yieldErr(ErrorUnexpectedCharacter, line, startCol, "Unexpected 'n'")
-					return
+					if !yieldErr(ErrorUnexpectedCharacter, line, startCol, "Unexpected 'n'") {
+						return
+					}
+					pos++
+					continue parseloop
 				}
 				pos += 4
 				nextMustBeSep = true
@@ -922,14 +958,18 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 						return
 					}
 					if inp[pos] < '0' || inp[pos] > '9' {
-						yieldErr(ErrorUnexpectedCharacter, line, pos-lineStart, "Unexpected char after '-'")
-						return
+						if !yieldErr(ErrorUnexpectedCharacter, line, pos-lineStart, "Unexpected char after '-'") {
+							return
+						}
+						pos++ // continue to parse number ignoring whatever this char was (after yielding error)
 					}
 				}
 				// Peek to check that we don't have leading zero
 				if inp[pos] == '0' && pos+1 < len(inp) && inp[pos+1] >= '0' && inp[pos+1] <= '9' {
-					yieldErr(ErrorLeadingZerosNotPermitted, line, pos-lineStart, "Leading zeros not permitted")
-					return
+					if !yieldErr(ErrorLeadingZerosNotPermitted, line, pos-lineStart, "Leading zeros not permitted") {
+						return
+					}
+					// continue to parse number ignoring leading zeros (after yielding error)
 				}
 				pos++
 				for pos < len(inp) && inp[pos] >= '0' && inp[pos] <= '9' {
@@ -938,8 +978,11 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 				if pos < len(inp) && inp[pos] == '.' {
 					pos++
 					if pos >= len(inp) || inp[pos] < '0' || inp[pos] > '9' {
-						yieldErr(ErrorExpectedDigitAfterDecimalPoint, line, pos-lineStart, "Expected digit after '.' in number")
-						return
+						if !yieldErr(ErrorExpectedDigitAfterDecimalPoint, line, pos-lineStart, "Expected digit after '.' in number") {
+							return
+						}
+						pos++
+						continue parseloop
 					}
 					for {
 						pos++
@@ -962,8 +1005,11 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 						return
 					}
 					if inp[pos] < '0' || inp[pos] > '9' {
-						yieldErr(ErrorExpectedDigitFollowinglingEInNumber, line, pos-lineStart, "Expected digit following 'e' in number")
-						return
+						if !yieldErr(ErrorExpectedDigitFollowinglingEInNumber, line, pos-lineStart, "Expected digit following 'e' in number") {
+							return
+						}
+						pos++
+						continue parseloop
 					}
 					pos++
 					for pos < len(inp) && inp[pos] >= '0' && inp[pos] <= '9' {
@@ -1035,8 +1081,10 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 							d3 := hexVal(inp[pos+3])
 							d4 := hexVal(inp[pos+4])
 							if d1 == -1 || d2 == -1 || d3 == -1 || d4 == -1 {
-								yieldErr(ErrorBadUnicodeEscape, line, pos-lineStart, "Bad '\\uXXXX' escape in string")
-								return
+								if !yieldErr(ErrorBadUnicodeEscape, line, pos-lineStart, "Bad '\\uXXXX' escape in string") {
+									return
+								}
+								d1, d2, d3, d4 = 0, 0, 0, 0 // error recovery
 							}
 							runeVal := d1*16*16*16 + d2*16*16 + d3*16 + d4
 							val = utf8.AppendRune(val, rune(runeVal))
@@ -1069,13 +1117,15 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 						if !canUseInpSlice {
 							val = append(val, inp[pos:pos+sz]...)
 						}
-						pos += sz
+						pos += max(sz, 1) // may be 0 if there was a decoding error
 					}
 				}
 			default:
 				r, _ := utf8.DecodeRune(inp[pos:])
-				yieldErr(ErrorUnexpectedCharacter, line, pos-lineStart, fmt.Sprintf("Unexpected char '%v'", r))
-				return
+				if !yieldErr(ErrorUnexpectedCharacter, line, pos-lineStart, fmt.Sprintf("Unexpected char '%v'", r)) {
+					return
+				}
+				pos++
 			}
 		}
 	}
