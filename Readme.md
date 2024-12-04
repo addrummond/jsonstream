@@ -140,7 +140,7 @@ func parseIntArray(input []byte) ([]int, error) {
 }
 ```
 
-### Parse a dictionary with string values
+### Parse an object with string values
 
 ```go
 import (
@@ -148,7 +148,7 @@ import (
 	"github.com/addrummond/jsonstream"
 )
 
-func parseDictionaryWithStringValues(input []byte) (map[string]string, error) {
+func parseObjectWithStringValues(input []byte) (map[string]string, error) {
 	state := 0
 	var p jsonstream.Parser
 	dict := make(map[string]string)
