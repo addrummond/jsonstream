@@ -25,6 +25,7 @@ func TestJSONTestSuite(t *testing.T) {
 		}
 		succeeded := true
 		var p Parser
+		t.Logf("contents %s", contents)
 		for t := range p.Tokenize(contents) {
 			if IsError(t.Kind) {
 				succeeded = false
