@@ -72,7 +72,7 @@ const (
 	primval = (1 << 30)
 )
 
-// IsError returns true for Error* token kinds and false for all other tokens.
+// IsError returns true for Error* token kinds and false for all others.
 func IsError(k Kind) bool {
 	return k&isError != 0
 }
@@ -176,7 +176,7 @@ func (t *Token) AsString() string {
 	return string(t.Value)
 }
 
-// AsString returns the token's associated object Key as a string.
+// KeyAsString returns the token's associated object Key as a string.
 func (t *Token) KeyAsString() string {
 	if t.Key == nil {
 		panic("jsonstream: KeyAsString called on token with no key")
@@ -185,7 +185,9 @@ func (t *Token) KeyAsString() string {
 }
 
 // AsFloat64 returns the token's value as a float64. Its return value is
-// defined only for tokens where Kind = Number.
+// defined only for tokens where Kind = Number. The input is parsed using
+// strconv.ParseFloat. If ParseFloat signals an error, a decode error is added
+// to the associated Parser.
 func (t *Token) AsFloat64() float64 {
 	f, err := strconv.ParseFloat(string(t.Value), 64)
 	if err != nil {
@@ -195,7 +197,9 @@ func (t *Token) AsFloat64() float64 {
 }
 
 // AsFloat32 returns the token's value as a float32. Its return value is
-// defined only for tokens where Kind = Number.
+// defined only for tokens where Kind = Number. The input is parsed using
+// strconv.ParseFloat. If ParseFloat signals an error, a decode error is added
+// to the associated Parser.
 func (t *Token) AsFloat32() float32 {
 	f, err := strconv.ParseFloat(string(t.Value), 32)
 	if err != nil {
@@ -247,7 +251,7 @@ func (p *Parser) PopDecodeErrorIf(predicate func(error) bool) {
 	}
 }
 
-// DecodeError returns the first decode error if any or nil otherwise. A decode
+// DecodeError returns the first decode error if any, or nil otherwise. A decode
 // error is an error caused by invalid input to AsInt, AsInt32, AsInt64,
 // AsFloat32, or AsFloat64.
 func (p *Parser) DecodeError() error {
@@ -257,7 +261,7 @@ func (p *Parser) DecodeError() error {
 	return (p.decodeErrors)[0]
 }
 
-// LastDecodeError returns the first decode error if any or nil otherwise. A
+// LastDecodeError returns the first decode error if any, or nil otherwise. A
 // decode error is an error caused by invalid input to AsInt, AsInt32, AsInt64,
 // AsFloat32, or AsFloat64.
 func (p *Parser) LastDecodeError() error {
@@ -286,7 +290,7 @@ const float64ExactIntMax = 9007199254740992
 // decode error is not added for in-range integer values specified
 // using floating point syntax (e.g. '1.5e1', which evaluates to 15). If the
 // decode error satisfies IsNotAnIntegerError(err) or IsOutOfRangeError(err)
-// then the returned int value approximates the value of the float as
+// then the returned value approximates the value of the float as
 // closely as possible. The function may therefore be used to parse floating
 // point values as the nearest int value.
 //
