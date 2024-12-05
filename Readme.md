@@ -92,8 +92,7 @@ Token{Kind: String, Key: []byte("baz"), Value: []byte("amp"), ...}
 Token{Kind: ObjectEnd, ...}
 ```
 
-The `KeyAsString` method can be used to obtain the key associated with a token
-as a string.
+The `KeyAsString` method can be used to obtain a token's key as a string.
 
 ## Performance
 
