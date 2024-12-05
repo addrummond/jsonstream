@@ -21,9 +21,10 @@ processing.
 * Choice of behavior for numeric literals outside the range of `float64` or
   `int`.
 * Support for `//` and `/* */` comments (optional).
-* Assumes UTF-8 input.
 * Reports errors for all invalid JSON. You need only verify that the JSON
   has the required structure.
+* Simple path API that can be used to search for values at a given path.
+* Assumes UTF-8 input.
 
 ## Usage
 
@@ -49,6 +50,9 @@ If you would prefer to pull tokens one-by-one rather than looping, you can use
 Errors are reported via error tokens, for which `IsError(token.Kind)` is true
 and `token.Error()` returns a non-nil `error` value. These tokens have their
 `ErrorMsg` field set. JSONStream does not automatically halt on errors.
+
+JSONStream always yields at least one error token for any input that is not
+valid JSON. This includes input with mismatched `{}[]`.
 
 ### Parsing numeric values
 
@@ -180,5 +184,33 @@ func parseObjectWithStringValues(input []byte) (map[string]string, error) {
 	}
 
 	return dict, p.DecodeError()
+}
+```
+
+### Search for a value at a given path
+
+```go
+import (
+	"errors"
+	"github.com/addrummond/jsonstream"
+)
+
+// Example call:
+//
+//	findByPath(
+//	  []byte(`{"a": {"b": {"c": 1}}}`),
+//	  []any{"a", "b", "c"}
+//	) // returns "1", nil
+func findByPath(input []byte, path []any) (string, error) {
+	var p jsonstream.Parser
+	for twp := range jsonstream.WithPaths(p.Tokenize(input)) {
+		if err := twp.Token.AsError(); err != nil {
+			return "", err
+		}
+		if jsonstream.PathEquals(twp.Path, path) {
+			return string(twp.Token.Value), nil
+		}
+	}
+	return "", errors.New("path not found")
 }
 ```

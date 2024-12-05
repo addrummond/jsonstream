@@ -70,6 +70,25 @@ func parseObjectWithStringValues(input []byte) (map[string]string, error) {
 	return dict, p.DecodeError()
 }
 
+// Example call:
+//
+//	findByPath(
+//	  []byte(`{"a": {"b": {"c": 1}}}`),
+//	  []any{"a", "b", "c"}
+//	) // returns "1", nil
+func findByPath(input []byte, path []any) (string, error) {
+	var p jsonstream.Parser
+	for twp := range jsonstream.WithPaths(p.Tokenize(input)) {
+		if err := twp.Token.AsError(); err != nil {
+			return "", err
+		}
+		if jsonstream.PathEquals(twp.Path, path) {
+			return string(twp.Token.Value), nil
+		}
+	}
+	return "", errors.New("path not found")
+}
+
 func TestParseIntArray(t *testing.T) {
 	var is []int64
 	var err error
@@ -113,6 +132,25 @@ func TestParseObjectWithStringValues(t *testing.T) {
 	if !reflect.DeepEqual(obj, expected) {
 		t.Errorf("Expected %v, got %v", expected, obj)
 	}
+}
+
+func TestFindByPath(t *testing.T) {
+	t.Run("simple case where equality holds", func(t *testing.T) {
+		s, err := findByPath([]byte(`{"a": {"b": {"c": 1}}}`), []any{"a", "b", "c"})
+		if err != nil {
+			t.Fatalf("Error: %v", err)
+		}
+		if s != "1" {
+			t.Errorf(`Expected "1", got %v`, s)
+		}
+	})
+
+	t.Run("simple case where equality does not hold", func(t *testing.T) {
+		_, err := findByPath([]byte(`{"a": {"bbbb": {"c": 1}}}`), []any{"a", "b", "c"})
+		if err.Error() != "path not found" {
+			t.Errorf(`Expected "path not found", got %v`, err.Error())
+		}
+	})
 }
 
 var intIs32Bit = (^uint(0))>>32 == 0
