@@ -92,9 +92,9 @@ func PathEquals(path Path, elems []any) bool {
 	return p == nil
 }
 
-// String() returns a string representation of the path. The string is a valid
+// String() returns a string representation of the path. The string is a
 // sequence of JavaScript indexation operators that can be used to access the
-// value in JavaScript (e.g. `[0]["foo"][1]]`).
+// value (e.g. [0]["foo"][1]]).
 func (p Path) String() string {
 	var sb strings.Builder
 	var rec func(*pathNode)
