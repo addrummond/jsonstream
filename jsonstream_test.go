@@ -533,6 +533,20 @@ func TestAsInt64(t *testing.T) {
 	})
 }
 
+func TestSurrogatePairs(t *testing.T) {
+	t.Run("treble clef from RFC8259", func(t *testing.T) {
+		const input = `"\uD834\uDD1E"`
+		var p Parser
+		for tok := range p.Tokenize([]byte(input)) {
+			if tok.Kind != String || tok.AsString() != "𝄞" {
+				t.Fatalf("Expected 𝄞, got %v", tok.AsString())
+			}
+			return
+		}
+		t.Fatalf("Expected at least one token")
+	})
+}
+
 const fuzzIterations = 10000
 
 // Check that parser doesn't panic or loop indefinitely on random input
