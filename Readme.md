@@ -25,6 +25,8 @@ processing.
   has the required structure.
 * Simple path API that can be used to search for values at a given path.
 * Assumes UTF-8 input.
+* Surrogate pair escape sequences decoded correctly (e.g. `"\uD834\uDD1E"`
+  decodes to UTF-8 []byte{0xf0, 0x9d, 0x84, 0x9e}, i.e. '𝄞').
 
 ## Usage
 

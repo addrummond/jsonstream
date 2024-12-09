@@ -9,6 +9,7 @@ import (
 	"math"
 	"strconv"
 	"unicode"
+	"unicode/utf16"
 	"unicode/utf8"
 )
 
@@ -1106,7 +1107,33 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 								d1, d2, d3, d4 = 0, 0, 0, 0 // error recovery
 							}
 							runeVal := d1*16*16*16 + d2*16*16 + d3*16 + d4
-							val = utf8.AppendRune(val, rune(runeVal))
+
+							if utf16.IsSurrogate(rune(runeVal)) && pos+10 < len(inp) && inp[pos+5] == '\\' && inp[pos+6] == 'u' {
+								d21 := hexVal(inp[pos+7])
+								d22 := hexVal(inp[pos+8])
+								d23 := hexVal(inp[pos+9])
+								d24 := hexVal(inp[pos+10])
+								if d21 == -1 || d22 == -1 || d23 == -1 || d24 == -1 {
+									if !yieldErr(ErrorBadUnicodeEscape, line, pos+7-lineStart, "Bad '\\uXXXX' escape in string") {
+										return
+									}
+									d21, d22, d23, d24 = 0, 0, 0, 0 // error recovery
+								}
+								rune2Val := d21*16*16*16 + d22*16*16 + d23*16 + d24
+								if utf16.IsSurrogate(rune(rune2Val)) {
+									runes := utf16.Decode([]uint16{uint16(runeVal), uint16(rune2Val)})
+									for _, r := range runes {
+										val = utf8.AppendRune(val, r)
+									}
+									pos += 6
+								} else {
+									// append the first one; leave the second for the next loop
+									// iteration
+									val = utf8.AppendRune(val, rune(runeVal))
+								}
+							} else {
+								val = utf8.AppendRune(val, rune(runeVal))
+							}
 							pos += 5
 						default:
 							if !yieldErr(ErrorUnexpectedCharacter, line, pos-lineStart, "Unexpected character after '\\' in string") {

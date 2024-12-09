@@ -1,6 +1,7 @@
 package jsonstream
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"iter"
@@ -541,9 +542,58 @@ func TestSurrogatePairs(t *testing.T) {
 			if tok.Kind != String || tok.AsString() != "𝄞" {
 				t.Fatalf("Expected 𝄞, got %v", tok.AsString())
 			}
+			fmt.Printf("THE BYRES %+v\n", tok.Value)
 			return
 		}
 		t.Fatalf("Expected at least one token")
+	})
+	t.Run("multiple treble clefs", func(t *testing.T) {
+		const input = `"\uD834\uDD1E\uD834\uDD1E\uD834\uDD1E\uD834\uDD1E\uD834\uDD1E"`
+		var p Parser
+		for tok := range p.Tokenize([]byte(input)) {
+			if tok.Kind != String || tok.AsString() != "𝄞𝄞𝄞𝄞𝄞" {
+				t.Fatalf("Expected 𝄞𝄞𝄞𝄞𝄞, got %v", tok.AsString())
+			}
+			return
+		}
+		t.Fatalf("Expected at least one token")
+	})
+	t.Run("treble clef surrogate pair with escape for 'A' interrupting", func(t *testing.T) {
+		const input = `"\uD834\u0041\uDD1E"`
+		var p Parser
+		for tok := range p.Tokenize([]byte(input)) {
+			if tok.Kind != String || !bytes.Equal(tok.Value, []byte{0xef, 0xbf, 0xbd, 0x41, 0xef, 0xbf, 0xbd}) {
+				fmt.Printf("%+v\n", tok.Value)
+				t.Fatalf(`Expected <replacement char>A<replacement char>, got %+v`, tok.Value)
+			}
+			return
+		}
+		t.Fatalf("Expected at least one token")
+	})
+	t.Run("sequence of treble clef surrogate pair with escape for 'A' interrupting", func(t *testing.T) {
+		const input = `"\uD834\u0041\uDD1E\uD834\u0041\uDD1E\uD834\u0041\uDD1E"`
+		var p Parser
+		for tok := range p.Tokenize([]byte(input)) {
+			if tok.Kind != String || !bytes.Equal(tok.Value, []byte{0xef, 0xbf, 0xbd, 0x41, 0xef, 0xbf, 0xbd, 0xef, 0xbf, 0xbd, 0x41, 0xef, 0xbf, 0xbd, 0xef, 0xbf, 0xbd, 0x41, 0xef, 0xbf, 0xbd}) {
+				fmt.Printf("%+v\n", tok.Value)
+				t.Fatalf(`Expected <replacement char>A<replacement char> 3 times, got %+v`, tok.Value)
+			}
+			return
+		}
+		t.Fatalf("Expected at least one token")
+	})
+	t.Run("does not crash for bad \\u escapes following surrogate pairs", func(t *testing.T) {
+		const input = `"\uD834\u!!04"`
+		var p Parser
+		error := false
+		for tok := range p.Tokenize([]byte(input)) {
+			if tok.AsError() != nil {
+				error = true
+			}
+		}
+		if !error {
+			t.Fatalf("Expected error")
+		}
 	})
 }
 
