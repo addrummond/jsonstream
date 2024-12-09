@@ -542,7 +542,6 @@ func TestSurrogatePairs(t *testing.T) {
 			if tok.Kind != String || tok.AsString() != "𝄞" {
 				t.Fatalf("Expected 𝄞, got %v", tok.AsString())
 			}
-			fmt.Printf("THE BYRES %+v\n", tok.Value)
 			return
 		}
 		t.Fatalf("Expected at least one token")
