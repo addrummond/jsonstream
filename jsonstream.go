@@ -55,7 +55,7 @@ const (
 	// A decimal point was not follwed by a digit.
 	ErrorExpectedDigitAfterDecimalPoint
 	// The 'e' (or 'E') in a number was not followed by a digit.
-	ErrorExpectedDigitFollowinglingEInNumber
+	ErrorExpectedDigitFollowingEInNumber
 	// A bad "\uXXXX" escape sequence was encountered in a string.
 	ErrorBadUnicodeEscape
 	// A control character not permitted by the JSON standard was found inside a
@@ -1019,7 +1019,7 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 						return
 					}
 					if inp[pos] < '0' || inp[pos] > '9' {
-						if !yieldErr(ErrorExpectedDigitFollowinglingEInNumber, line, pos-lineStart, "Expected digit following 'e' in number") {
+						if !yieldErr(ErrorExpectedDigitFollowingEInNumber, line, pos-lineStart, "Expected digit following 'e' in number") {
 							return
 						}
 						pos++
