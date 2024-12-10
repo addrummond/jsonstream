@@ -165,7 +165,7 @@ func (t Token) AsError() error {
 }
 
 // AsBool returns the token's value as a bool. Its return value is defined only
-// for tokens where Kind = True or Kind = False.
+// for tokens where Kind == True or Kind == False.
 func (t *Token) AsBool() bool {
 	if t.Kind != True && t.Kind != False {
 		panic("jsonstream: AsBool called on non-boolean token")
@@ -174,7 +174,7 @@ func (t *Token) AsBool() bool {
 }
 
 // AsString returns the token's value as a string. Its return value is defined
-// only for tokens where Kind = String.
+// only for tokens where Kind == String.
 func (t *Token) AsString() string {
 	if t.Kind != String {
 		panic("jsonstream: AsString called on non-string token")
@@ -191,7 +191,7 @@ func (t *Token) KeyAsString() string {
 }
 
 // AsFloat64 returns the token's value as a float64. Its return value is
-// defined only for tokens where Kind = Number. The input is parsed using
+// defined only for tokens where Kind == Number. The input is parsed using
 // strconv.ParseFloat. If ParseFloat signals an error, a decode error is added
 // to the associated Parser.
 func (t *Token) AsFloat64() float64 {
@@ -203,7 +203,7 @@ func (t *Token) AsFloat64() float64 {
 }
 
 // AsFloat32 returns the token's value as a float32. Its return value is
-// defined only for tokens where Kind = Number. The input is parsed using
+// defined only for tokens where Kind == Number. The input is parsed using
 // strconv.ParseFloat. If ParseFloat signals an error, a decode error is added
 // to the associated Parser.
 func (t *Token) AsFloat32() float32 {
@@ -291,7 +291,7 @@ func (p *Parser) DecodeErrors() []error {
 const float64ExactIntMax = 9007199254740992
 
 // AsInt returns the token's value as an int. Its return value is defined
-// only for tokens where Kind = Number. If the value is not an integer or does
+// only for tokens where Kind == Number. If the value is not an integer or does
 // not fit in an int, then a decode error is added to the associated Parser. A
 // decode error is not added for in-range integer values specified
 // using floating point syntax (e.g. '1.5e1', which evaluates to 15). If the
