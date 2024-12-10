@@ -43,9 +43,8 @@ p.AllowComments = true
 p.AllowTrailingCommas = true
 ```
 
-Call the `Tokenize` or `TokenizeAllowingComments` with a byte
-slice to obtain an [iterator](https://pkg.go.dev/iter) over a sequence of
-tokens:
+Call the `Tokenize` method with a byte slice to obtain an
+[iterator](https://pkg.go.dev/iter) over a sequence of tokens:
 
 ```go
 for tok := range p.Tokenize(input) {
