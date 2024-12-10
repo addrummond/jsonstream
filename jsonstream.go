@@ -168,7 +168,7 @@ func (t Token) AsError() error {
 // for tokens where Kind = True or Kind = False.
 func (t *Token) AsBool() bool {
 	if t.Kind != True && t.Kind != False {
-		panic("jsonstream: AsString called on non-boolean token")
+		panic("jsonstream: AsBool called on non-boolean token")
 	}
 	return t.Kind == True
 }
