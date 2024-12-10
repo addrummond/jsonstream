@@ -20,7 +20,7 @@ processing.
   [JSONTestSuite](https://github.com/nst/JSONTestSuite)).
 * Choice of behavior for numeric literals outside the range of `float64` or
   `int`.
-* Support for `//` and `/* */` comments (optional).
+* Optional support for JavaScript-style comments and trailing commas.
 * Reports errors for all invalid JSON. You need only verify that the JSON
   has the required structure.
 * Simple path API that can be used to search for values at a given path.
