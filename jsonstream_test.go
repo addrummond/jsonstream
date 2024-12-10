@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"iter"
 	"math"
 	"strings"
 	"testing"
@@ -223,6 +222,24 @@ func TestBadCommasInArrays(t *testing.T) {
 			t.Errorf("Expected to succeed")
 		}
 	})
+	t.Run("with option set, allows trailing commas in arrays", func(t *testing.T) {
+		const input = `[1,[2,3,],4,]`
+		if !succeedsAllowingTrailingCommas(input) {
+			t.Errorf("Expected to succeed")
+		}
+	})
+	t.Run("with option set, allows trailing commas but not multiple commas", func(t *testing.T) {
+		const input = `[1,[2,,3,],4,]`
+		if succeedsAllowingTrailingCommas(input) {
+			t.Errorf("Expected to fail")
+		}
+	})
+	t.Run("with option set, allows trailing commas but not initial commas", func(t *testing.T) {
+		const input = `[,1,[2,3],4]`
+		if succeedsAllowingTrailingCommas(input) {
+			t.Errorf("Expected to fail")
+		}
+	})
 }
 
 func TestNestedArrays(t *testing.T) {
@@ -322,6 +339,12 @@ func TestBadCommasInObjects(t *testing.T) {
 			t.Errorf("Expected to fail")
 		}
 	})
+	t.Run("multiple commas", func(t *testing.T) {
+		const input = `{"foo":1,,"bar":2,"amp":3}`
+		if succeeds(input) {
+			t.Errorf("Expected to fail")
+		}
+	})
 	t.Run("trailing comma 3 elems", func(t *testing.T) {
 		const input = `{"foo":1,"bar":2,"amp":3,}`
 		if succeeds(input) {
@@ -349,6 +372,24 @@ func TestBadCommasInObjects(t *testing.T) {
 	t.Run("trailing comma in middle of entry", func(t *testing.T) {
 		const input = `{"bar":"amp","foo":,}`
 		if succeeds(input) {
+			t.Errorf("Expected to fail")
+		}
+	})
+	t.Run("with option set, allows trailing commas in objects", func(t *testing.T) {
+		const input = `{"foo": 1, "bar": {"blah": 4,},}`
+		if !succeedsAllowingTrailingCommas(input) {
+			t.Errorf("Expected to succeed")
+		}
+	})
+	t.Run("with option set, allows trailing commas but not multiple commas", func(t *testing.T) {
+		const input = `{"foo": 1,, "bar": {"blah": 4,},}`
+		if succeedsAllowingTrailingCommas(input) {
+			t.Errorf("Expected to fail")
+		}
+	})
+	t.Run("with option set, allows trailing commas but not initial commas", func(t *testing.T) {
+		const input = `{,"foo": 1, "bar": {"blah": 4}}`
+		if succeedsAllowingTrailingCommas(input) {
 			t.Errorf("Expected to fail")
 		}
 	})
@@ -443,15 +484,11 @@ func tokSeq(inp string, comments int) string {
 	i := 0
 
 	var p Parser
-
-	var f func([]byte) iter.Seq[Token]
 	if comments == allowComments {
-		f = p.TokenizeAllowingComments
-	} else {
-		f = p.Tokenize
+		p.AllowComments = true
 	}
 
-	for t := range f([]byte(inp)) {
+	for t := range p.Tokenize([]byte(inp)) {
 		if i != 0 {
 			sb.WriteByte('\n')
 		}
@@ -463,6 +500,17 @@ func tokSeq(inp string, comments int) string {
 
 func succeeds(inp string) bool {
 	var p Parser
+	for t := range p.Tokenize([]byte(inp)) {
+		if IsError(t.Kind) {
+			return false
+		}
+	}
+	return true
+}
+
+func succeedsAllowingTrailingCommas(inp string) bool {
+	var p Parser
+	p.AllowTrailingCommas = true
 	for t := range p.Tokenize([]byte(inp)) {
 		if IsError(t.Kind) {
 			return false

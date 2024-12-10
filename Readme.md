@@ -36,6 +36,13 @@ Create a parser:
 var p jsonstream.Parser
 ```
 
+Optionally change the default configuration (default is strict JSON):
+
+```go
+p.AllowComments = true
+p.AllowTrailingCommas = true
+```
+
 Call the `Tokenize` or `TokenizeAllowingComments` with a byte
 slice to obtain an [iterator](https://pkg.go.dev/iter) over a sequence of
 tokens:

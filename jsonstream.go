@@ -47,6 +47,9 @@ const (
 	// There is a trailing comma in an object or array (not permitted by the JSON
 	// standard).
 	ErrorTrailingComma
+	// There is a comma in an unexpected position (either immediately following '['
+	// or '{' or immediately following another comma).
+	ErrorUnexpectedComma
 	// An unexpected character was encountered while tokenizing the input.
 	ErrorUnexpectedCharacter
 	// A numeric literal has leading zeros (not permitted by the JSON standard).
@@ -114,8 +117,10 @@ func (k Kind) String() string {
 
 // Parser is a streaming JSON parser. It is valid when default initialized.
 type Parser struct {
-	errors       []Token
-	decodeErrors []error
+	AllowComments       bool // Set to true to allow /* */ and // comments in the input
+	AllowTrailingCommas bool // Set to true to allow trailing commas in arrays and objects (does not allow initial commas or multiple commas)
+	errors              []Token
+	decodeErrors        []error
 }
 
 // Token represents a JSON token.
@@ -520,27 +525,17 @@ func mkErr(errorKind Kind, line, col int, msg string) Token {
 	}
 }
 
-// Tokenize returns an iter.Seq[Token] from a byte slice input.
-func (p *Parser) Tokenize(inp []byte) iter.Seq[Token] {
-	return tokenize(p, inp, false)
-}
-
-// TokenizeAllowingComments returns an iter.Seq[Token] from a byte slice input. JavaScript-style
-// comments are allowed.
-func (p *Parser) TokenizeAllowingComments(inp []byte) iter.Seq[Token] {
-	return tokenize(p, inp, true)
-}
-
 // a non-nil empty byte slice
 var notNilEmptyByteSlice = []byte{}
 
-func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
+// Tokenize returns an iter.Seq[Token] from a byte slice input.
+func (p *Parser) Tokenize(inp []byte) iter.Seq[Token] {
 	next_, stop := iter.Pull(rawTokenize(p, inp))
 
 	var haltedOnComment bool
 
 	next := func(yield func(Token) bool) (t Token, ok bool) {
-		if !allowComments {
+		if !p.AllowComments {
 			return next_()
 		}
 		for {
@@ -630,7 +625,7 @@ func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
 			}
 
 			if valtok.Kind == ArrayEnd {
-				if afterComma {
+				if afterComma && !p.AllowTrailingCommas {
 					if !yieldErr(ErrorTrailingComma, valtok.Line, valtok.Col, "Trailing ','") {
 						return false
 					}
@@ -659,7 +654,7 @@ func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
 				}
 			case comma:
 				afterComma = true
-				if !yieldErr(ErrorUnexpectedToken, valtok.Line, valtok.Col, "Unexpected ',' inside array") {
+				if !yieldErr(ErrorUnexpectedComma, valtok.Line, valtok.Col, "Unexpected ',' inside array") {
 					return false
 				}
 				continue
@@ -704,7 +699,7 @@ func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
 			}
 
 			if keytok.Kind == ObjectEnd {
-				if afterComma {
+				if afterComma && !p.AllowTrailingCommas {
 					if !yieldErr(ErrorTrailingComma, keytok.Line, keytok.Col, "Trailing ','") {
 						return false
 					}
@@ -713,8 +708,14 @@ func tokenize(p *Parser, inp []byte, allowComments bool) iter.Seq[Token] {
 			}
 
 			if keytok.Kind != String {
-				if !yieldErr(ErrorUnexpectedToken, keytok.Line, keytok.Col, "Unexpected token inside object (expecting key)") {
-					return false
+				if keytok.Kind == comma {
+					if !yieldErr(ErrorUnexpectedComma, keytok.Line, keytok.Col, "Unexpected ',' inside object (expecting key)") {
+						return false
+					}
+				} else {
+					if !yieldErr(ErrorUnexpectedToken, keytok.Line, keytok.Col, "Unexpected token inside object (expecting key)") {
+						return false
+					}
 				}
 				keytok.Value = notNilEmptyByteSlice // error recovery; set empty key
 			}
