@@ -562,7 +562,6 @@ func TestSurrogatePairs(t *testing.T) {
 		var p Parser
 		for tok := range p.Tokenize([]byte(input)) {
 			if tok.Kind != String || !bytes.Equal(tok.Value, []byte{0xef, 0xbf, 0xbd, 0x41, 0xef, 0xbf, 0xbd}) {
-				fmt.Printf("%+v\n", tok.Value)
 				t.Fatalf(`Expected <replacement char>A<replacement char>, got %+v`, tok.Value)
 			}
 			return
@@ -574,7 +573,6 @@ func TestSurrogatePairs(t *testing.T) {
 		var p Parser
 		for tok := range p.Tokenize([]byte(input)) {
 			if tok.Kind != String || !bytes.Equal(tok.Value, []byte{0xef, 0xbf, 0xbd, 0x41, 0xef, 0xbf, 0xbd, 0xef, 0xbf, 0xbd, 0x41, 0xef, 0xbf, 0xbd, 0xef, 0xbf, 0xbd, 0x41, 0xef, 0xbf, 0xbd}) {
-				fmt.Printf("%+v\n", tok.Value)
 				t.Fatalf(`Expected <replacement char>A<replacement char> 3 times, got %+v`, tok.Value)
 			}
 			return
