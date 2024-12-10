@@ -240,6 +240,12 @@ func TestBadCommasInArrays(t *testing.T) {
 			t.Errorf("Expected to fail")
 		}
 	})
+	t.Run("with option set, allows trailing commas but not empty array with a single comma", func(t *testing.T) {
+		const input = `[,]`
+		if succeedsAllowingTrailingCommas(input) {
+			t.Errorf("Expected to fail")
+		}
+	})
 }
 
 func TestNestedArrays(t *testing.T) {
@@ -389,6 +395,12 @@ func TestBadCommasInObjects(t *testing.T) {
 	})
 	t.Run("with option set, allows trailing commas but not initial commas", func(t *testing.T) {
 		const input = `{,"foo": 1, "bar": {"blah": 4}}`
+		if succeedsAllowingTrailingCommas(input) {
+			t.Errorf("Expected to fail")
+		}
+	})
+	t.Run("with option set, allows trailing commas but not empty object with a single comma", func(t *testing.T) {
+		const input = `{,}`
 		if succeedsAllowingTrailingCommas(input) {
 			t.Errorf("Expected to fail")
 		}
