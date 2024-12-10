@@ -164,15 +164,15 @@ func WithPaths(tokens iter.Seq[Token]) iter.Seq[TokenWithPath] {
 				}
 			}
 
+			if !yield(TokenWithPath{t, Path{currentPath}}) {
+				return
+			}
+
 			switch t.Kind {
 			case ArrayStart:
 				addIndex(&pool, &currentPath, -1)
 			case ObjectStart:
 				addKeyLookup(&currentPath, "", &pool)
-			}
-
-			if !yield(TokenWithPath{t, Path{currentPath}}) {
-				return
 			}
 		}
 	}
