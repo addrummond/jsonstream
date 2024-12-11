@@ -639,6 +639,17 @@ func TestSurrogatePairs(t *testing.T) {
 		}
 		t.Fatalf("Expected at least one token")
 	})
+	t.Run("sequence of 4 'A' characters specified via \\u escapes", func(t *testing.T) {
+		const input = `"\u0041\u0041\u0041\u0041"`
+		var p Parser
+		for tok := range p.Tokenize([]byte(input)) {
+			if tok.Kind != String || !bytes.Equal(tok.Value, []byte{0x41, 0x41, 0x41, 0x41}) {
+				t.Fatalf(`Expected AAAA, got %+v`, tok.Value)
+			}
+			return
+		}
+		t.Fatalf("Expected at least one token")
+	})
 	t.Run("does not crash for bad \\u escapes following surrogate pairs", func(t *testing.T) {
 		const input = `"\uD834\u!!04"`
 		var p Parser
