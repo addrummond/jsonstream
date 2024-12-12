@@ -56,7 +56,7 @@ If you would prefer to pull tokens one-by-one rather than looping, you can use
 [`iter.Pull`](https://pkg.go.dev/iter#hdr-Pulling_Values).
 
 Errors are reported via error tokens, for which `IsError(token.Kind)` is true
-and `token.Error()` returns a non-nil `error` value. These tokens have their
+and `token.AsError()` returns a non-nil `error` value. These tokens have their
 `ErrorMsg` field set. JSONStream does not automatically halt on errors.
 
 JSONStream always yields at least one error token for any input that is not
