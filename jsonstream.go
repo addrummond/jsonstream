@@ -67,7 +67,7 @@ const (
 	ErrorIllegalControlCharInsideString
 	// UTF-8 decoding failing inside a string.
 	ErrorUTF8DecodingErrorInsideString
-	colon
+	colon = iota
 	comma
 )
 
