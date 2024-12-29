@@ -21,6 +21,36 @@ var input = []byte(`
 			9999,
 			"foobaramp"
 		]
+	}],
+	[1, 2, "foo", {
+		"key1": {
+			"key2": [
+				"foo",
+				"bar日本国amp\u0055\n\fblahblah",
+				"amp"
+			]
+		},
+		"key2": [
+			1e45,
+			-55,
+			9999,
+			"foobaramp"
+		]
+	}],
+	[1, 2, "foo", {
+		"key1": {
+			"key2": [
+				"foo",
+				"bar日本国amp\u0055\n\fblahblah",
+				"amp"
+			]
+		},
+		"key2": [
+			1e45,
+			-55,
+			9999,
+			"foobaramp"
+		]
 	}]
 ]
 `)
