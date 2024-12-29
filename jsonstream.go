@@ -616,7 +616,8 @@ func (p *Parser) Tokenize(inp []byte) iter.Seq[Token] {
 			return true
 		}
 
-		afterComma := false
+		afterCommaLine := -1
+		afterCommaCol := -1
 		for {
 			valtok, ok := next(yield)
 			if !ok {
@@ -625,8 +626,8 @@ func (p *Parser) Tokenize(inp []byte) iter.Seq[Token] {
 			}
 
 			if valtok.Kind == ArrayEnd {
-				if afterComma && !p.AllowTrailingCommas {
-					if !yieldErr(ErrorTrailingComma, valtok.Line, valtok.Col, "Trailing ','") {
+				if afterCommaLine != -1 && !p.AllowTrailingCommas {
+					if !yieldErr(ErrorTrailingComma, afterCommaLine, afterCommaCol, "Trailing ','") {
 						return false
 					}
 				}
@@ -653,7 +654,8 @@ func (p *Parser) Tokenize(inp []byte) iter.Seq[Token] {
 					return false
 				}
 			case comma:
-				afterComma = true
+				afterCommaLine = valtok.Line
+				afterCommaCol = valtok.Col
 				if !yieldErr(ErrorUnexpectedComma, valtok.Line, valtok.Col, "Unexpected ',' inside array") {
 					return false
 				}
@@ -678,7 +680,8 @@ func (p *Parser) Tokenize(inp []byte) iter.Seq[Token] {
 					return false
 				}
 			}
-			afterComma = true
+			afterCommaLine = t.Line
+			afterCommaCol = t.Col
 		}
 	}
 
@@ -690,7 +693,8 @@ func (p *Parser) Tokenize(inp []byte) iter.Seq[Token] {
 			return true
 		}
 
-		afterComma := false
+		afterCommaLine := -1
+		afterCommaCol := -1
 		for {
 			keytok, ok := next(yield)
 			if !ok {
@@ -699,8 +703,8 @@ func (p *Parser) Tokenize(inp []byte) iter.Seq[Token] {
 			}
 
 			if keytok.Kind == ObjectEnd {
-				if afterComma && !p.AllowTrailingCommas {
-					if !yieldErr(ErrorTrailingComma, keytok.Line, keytok.Col, "Trailing ','") {
+				if afterCommaLine != -1 && !p.AllowTrailingCommas {
+					if !yieldErr(ErrorTrailingComma, afterCommaLine, afterCommaCol, "Trailing ','") {
 						return false
 					}
 				}
@@ -781,7 +785,8 @@ func (p *Parser) Tokenize(inp []byte) iter.Seq[Token] {
 					return false
 				}
 			}
-			afterComma = true
+			afterCommaLine = t.Line
+			afterCommaCol = t.Col
 		}
 	}
 
