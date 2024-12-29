@@ -829,11 +829,11 @@ func rawTokenize(p *Parser, st *rawTokenizeState, inp []byte) (Token, bool) {
 wsLoop:
 	for {
 		switch inp[st.pos] {
-		case ' ', '\r', '\n', '\t':
-			if inp[st.pos] == '\n' {
-				st.line++
-				st.lineStart = st.pos
-			}
+		case '\n':
+			st.line++
+			st.lineStart = st.pos
+			fallthrough
+		case ' ', '\r', '\t':
 			st.pos++
 			if st.pos >= len(inp) {
 				return Token{}, false
