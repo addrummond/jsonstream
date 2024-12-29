@@ -826,7 +826,7 @@ func rawTokenize(p *Parser, st *rawTokenizeState, inp []byte) (Token, bool) {
 		}
 	}
 
-ws_loop:
+wsLoop:
 	for {
 		switch inp[st.pos] {
 		case ' ', '\r', '\n', '\t':
@@ -839,7 +839,7 @@ ws_loop:
 				return Token{}, false
 			}
 		default:
-			break ws_loop
+			break wsLoop
 		}
 	}
 
