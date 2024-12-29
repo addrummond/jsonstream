@@ -19,19 +19,19 @@ func TestJSONTestSuite(t *testing.T) {
 			t.Fatalf("Error decoding base64 input: %v", err)
 		}
 
-		if err != nil {
-			t.Fatal(err)
-		}
 		succeeded := true
 		var p Parser
-		t.Logf("contents %s", contents)
 		for t := range p.Tokenize(contents) {
 			if IsError(t.Kind) {
 				succeeded = false
 				break
 			}
 		}
-		t.Logf("Parsing %v", filename)
+
+		if strings.HasPrefix(filename, "y_") && !succeeded || strings.HasPrefix(filename, "n_") && succeeded {
+			t.Logf("Parsing %v", filename)
+			t.Logf("contents %s", contents)
+		}
 		if strings.HasPrefix(filename, "y_") && !succeeded {
 			t.Errorf("Expected %v to succeed", filename)
 		} else if strings.HasPrefix(filename, "n_") && succeeded {

@@ -2,7 +2,6 @@ package jsonstream
 
 import (
 	"encoding/json"
-	"iter"
 	"testing"
 )
 
@@ -44,33 +43,6 @@ func BenchmarkJsonstream(b *testing.B) {
 	for range b.N {
 		var p Parser
 		for t := range p.Tokenize(input) {
-			if IsError(t.Kind) {
-				b.Fatalf("Unexpected Tokenize error: %+v\n", t)
-			}
-		}
-	}
-}
-
-func BenchmarkPushRawTokenize(b *testing.B) {
-	for range b.N {
-		var p Parser
-		for t := range rawTokenize(&p, input) {
-			if IsError(t.Kind) {
-				b.Fatalf("Unexpected Tokenize error: %+v\n", t)
-			}
-		}
-	}
-}
-
-func BenchmarkPullRawTokenize(b *testing.B) {
-	for range b.N {
-		var p Parser
-		next, _ := iter.Pull(rawTokenize(&p, input))
-		for {
-			t, ok := next()
-			if !ok {
-				break
-			}
 			if IsError(t.Kind) {
 				b.Fatalf("Unexpected Tokenize error: %+v\n", t)
 			}
