@@ -989,6 +989,7 @@ func rawTokenize(p *Parser, inp []byte) iter.Seq[Token] {
 							return
 						}
 						pos++ // continue to parse number ignoring whatever this char was (after yielding error)
+						continue parseloop
 					}
 				}
 				firstDigitI := pos // we'll check later for a leading zero here
