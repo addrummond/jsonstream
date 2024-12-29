@@ -812,300 +812,307 @@ func rawTokenize(p *Parser, st *rawTokenizeState, inp []byte) (Token, bool) {
 		return err
 	}
 
-	for {
-		if st.pos >= len(inp) {
-			return Token{}, false
-		}
+	if st.pos >= len(inp) {
+		return Token{}, false
+	}
 
-		c := inp[st.pos]
-		if st.nextMustBeSep {
-			switch c {
-			case ' ', '\r', '\n', '\t', '/', ':', ',', '[', ']', '{', '}':
-				st.nextMustBeSep = false
-			default:
-				st.pos++
-				return addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected character"), true
-			}
-		}
-
-		switch c {
-		case ' ', '\r', '\n', '\t':
+	if st.nextMustBeSep {
+		switch inp[st.pos] {
+		case ' ', '\r', '\n', '\t', '/', ':', ',', '[', ']', '{', '}':
+			st.nextMustBeSep = false
+		default:
 			st.pos++
-			if c == '\n' {
+			return addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected character"), true
+		}
+	}
+
+ws_loop:
+	for {
+		switch inp[st.pos] {
+		case ' ', '\r', '\n', '\t':
+			if inp[st.pos] == '\n' {
 				st.line++
-				st.lineStart = st.pos - 1
+				st.lineStart = st.pos
 			}
-			continue
-		case '/':
-			start := st.pos
-			startLine := st.line
-			startCol := st.pos - st.lineStart
 			st.pos++
 			if st.pos >= len(inp) {
-				return addErr(ErrorUnexpectedCharacter, st.line, st.pos-st.lineStart, "Unexpected '/'"), true
+				return Token{}, false
 			}
-			switch inp[st.pos] {
-			case '*':
-				for {
-					st.pos++
-					if st.pos >= len(inp) {
-						return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside comment"), true
-					}
-					if inp[st.pos] == '\n' {
-						st.line++
-						st.lineStart = st.pos
-						st.pos++
-					} else if inp[st.pos] == '*' {
-						st.pos++
-						if st.pos >= len(inp) {
-							return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside /* ... */ comment"), true
-						}
-						if inp[st.pos] == '/' {
-							st.pos++
-							return Token{Line: startLine, Col: startCol, Start: start, End: st.pos - 1, Kind: Comment, Value: inp[start:st.pos]}, true
-						}
-					}
-				}
-			case '/':
-				for {
-					st.pos++
-					if st.pos >= len(inp) {
-						return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside // comment"), true
-					}
-					if inp[st.pos] == '\n' {
-						st.lineStart = st.pos
-						st.pos++
-						st.line++
-						return Token{Line: startLine, Col: startCol, Start: start, End: st.pos - 2, Kind: Comment, Value: inp[start : st.pos-1]}, true
-					}
-				}
-			default:
-				st.pos++
-				return addErr(ErrorUnexpectedToken, st.line, st.pos-1-st.lineStart, "Unexpected '/'"), true
-			}
-		case ':':
-			st.pos++
-			return Token{Line: st.line, Col: st.pos - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: colon}, true
-		case ',':
-			st.pos++
-			return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: comma}, true
-		case '[':
-			st.pos++
-			return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ArrayStart}, true
-		case '{':
-			st.pos++
-			return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ObjectStart}, true
-		case ']':
-			st.pos++
-			return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ArrayEnd}, true
-		case '}':
-			st.pos++
-			return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ObjectEnd}, true
-		case 't':
-			start := st.pos
-			startCol := st.pos - st.lineStart
-			if st.pos+3 >= len(inp) || inp[st.pos+1] != 'r' || inp[st.pos+2] != 'u' || inp[st.pos+3] != 'e' {
-				st.pos++
-				return addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected 't'"), true
-			}
-			st.pos += 4
-			st.nextMustBeSep = true
-			return Token{Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: True}, true
-		case 'f':
-			start := st.pos
-			startCol := st.pos - st.lineStart
-			if st.pos+4 >= len(inp) || inp[st.pos+1] != 'a' || inp[st.pos+2] != 'l' || inp[st.pos+3] != 's' || inp[st.pos+4] != 'e' {
-				st.pos++
-				return addErr(ErrorUnexpectedCharacter, st.line, startCol, "Unexpected 'f'"), true
-			}
-			st.pos += 5
-			st.nextMustBeSep = true
-			return Token{Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: False}, true
-		case 'n':
-			start := st.pos
-			startCol := st.pos - st.lineStart
-			if st.pos+3 >= len(inp) || inp[st.pos+1] != 'u' || inp[st.pos+2] != 'l' || inp[st.pos+3] != 'l' {
-				st.pos++
-				return addErr(ErrorUnexpectedCharacter, st.line, startCol, "Unexpected 'n'"), true
-			}
-			st.pos += 4
-			st.nextMustBeSep = true
-			return Token{Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: Null}, true
-		case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			start := st.pos
-			startCol := st.pos - st.lineStart
-			if c == '-' {
+		default:
+			break ws_loop
+		}
+	}
+
+	switch inp[st.pos] {
+	case '/':
+		start := st.pos
+		startLine := st.line
+		startCol := st.pos - st.lineStart
+		st.pos++
+		if st.pos >= len(inp) {
+			return addErr(ErrorUnexpectedCharacter, st.line, st.pos-st.lineStart, "Unexpected '/'"), true
+		}
+		switch inp[st.pos] {
+		case '*':
+			for {
 				st.pos++
 				if st.pos >= len(inp) {
-					return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF"), true
+					return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside comment"), true
 				}
-				if inp[st.pos] < '0' || inp[st.pos] > '9' {
+				if inp[st.pos] == '\n' {
+					st.line++
+					st.lineStart = st.pos
 					st.pos++
-					return addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected char after '-'"), true
+				} else if inp[st.pos] == '*' {
+					st.pos++
+					if st.pos >= len(inp) {
+						return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside /* ... */ comment"), true
+					}
+					if inp[st.pos] == '/' {
+						st.pos++
+						return Token{Line: startLine, Col: startCol, Start: start, End: st.pos - 1, Kind: Comment, Value: inp[start:st.pos]}, true
+					}
 				}
 			}
-			firstDigitI := st.pos // we'll check later for a leading zero here
+		case '/':
+			for {
+				st.pos++
+				if st.pos >= len(inp) {
+					return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside // comment"), true
+				}
+				if inp[st.pos] == '\n' {
+					st.lineStart = st.pos
+					st.pos++
+					st.line++
+					return Token{Line: startLine, Col: startCol, Start: start, End: st.pos - 2, Kind: Comment, Value: inp[start : st.pos-1]}, true
+				}
+			}
+		default:
+			st.pos++
+			return addErr(ErrorUnexpectedToken, st.line, st.pos-1-st.lineStart, "Unexpected '/'"), true
+		}
+	case ':':
+		st.pos++
+		return Token{Line: st.line, Col: st.pos - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: colon}, true
+	case ',':
+		st.pos++
+		return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: comma}, true
+	case '[':
+		st.pos++
+		return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ArrayStart}, true
+	case '{':
+		st.pos++
+		return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ObjectStart}, true
+	case ']':
+		st.pos++
+		return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ArrayEnd}, true
+	case '}':
+		st.pos++
+		return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ObjectEnd}, true
+	case 't':
+		start := st.pos
+		startCol := st.pos - st.lineStart
+		if st.pos+3 >= len(inp) || inp[st.pos+1] != 'r' || inp[st.pos+2] != 'u' || inp[st.pos+3] != 'e' {
+			st.pos++
+			return addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected 't'"), true
+		}
+		st.pos += 4
+		st.nextMustBeSep = true
+		return Token{Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: True}, true
+	case 'f':
+		start := st.pos
+		startCol := st.pos - st.lineStart
+		if st.pos+4 >= len(inp) || inp[st.pos+1] != 'a' || inp[st.pos+2] != 'l' || inp[st.pos+3] != 's' || inp[st.pos+4] != 'e' {
+			st.pos++
+			return addErr(ErrorUnexpectedCharacter, st.line, startCol, "Unexpected 'f'"), true
+		}
+		st.pos += 5
+		st.nextMustBeSep = true
+		return Token{Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: False}, true
+	case 'n':
+		start := st.pos
+		startCol := st.pos - st.lineStart
+		if st.pos+3 >= len(inp) || inp[st.pos+1] != 'u' || inp[st.pos+2] != 'l' || inp[st.pos+3] != 'l' {
+			st.pos++
+			return addErr(ErrorUnexpectedCharacter, st.line, startCol, "Unexpected 'n'"), true
+		}
+		st.pos += 4
+		st.nextMustBeSep = true
+		return Token{Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: Null}, true
+	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		start := st.pos
+		startCol := st.pos - st.lineStart
+		if inp[st.pos] == '-' {
+			st.pos++
+			if st.pos >= len(inp) {
+				return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF"), true
+			}
+			if inp[st.pos] < '0' || inp[st.pos] > '9' {
+				st.pos++
+				return addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected char after '-'"), true
+			}
+		}
+		firstDigitI := st.pos // we'll check later for a leading zero here
+		st.pos++
+		for st.pos < len(inp) && inp[st.pos] >= '0' && inp[st.pos] <= '9' {
+			st.pos++
+		}
+		if st.pos < len(inp) && inp[st.pos] == '.' {
+			st.pos++
+			if st.pos >= len(inp) || inp[st.pos] < '0' || inp[st.pos] > '9' {
+				st.pos++
+				return addErr(ErrorExpectedDigitAfterDecimalPoint, st.line, st.pos-1-st.lineStart, "Expected digit after '.' in number"), true
+			}
+			for {
+				st.pos++
+				if st.pos >= len(inp) || inp[st.pos] < '0' || inp[st.pos] > '9' {
+					break
+				}
+			}
+		}
+		if st.pos < len(inp) && (inp[st.pos] == 'e' || inp[st.pos] == 'E') {
+			st.pos++
+			if st.pos >= len(inp) {
+				return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF"), true
+			}
+			if inp[st.pos] == '+' || inp[st.pos] == '-' {
+				st.pos++
+			}
+			if st.pos >= len(inp) {
+				return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF"), true
+			}
+			if inp[st.pos] < '0' || inp[st.pos] > '9' {
+				st.pos++
+				return addErr(ErrorExpectedDigitFollowingEInNumber, st.line, st.pos-1-st.lineStart, "Expected digit following 'e' in number"), true
+			}
 			st.pos++
 			for st.pos < len(inp) && inp[st.pos] >= '0' && inp[st.pos] <= '9' {
 				st.pos++
 			}
-			if st.pos < len(inp) && inp[st.pos] == '.' {
-				st.pos++
-				if st.pos >= len(inp) || inp[st.pos] < '0' || inp[st.pos] > '9' {
-					st.pos++
-					return addErr(ErrorExpectedDigitAfterDecimalPoint, st.line, st.pos-1-st.lineStart, "Expected digit after '.' in number"), true
-				}
-				for {
-					st.pos++
-					if st.pos >= len(inp) || inp[st.pos] < '0' || inp[st.pos] > '9' {
-						break
-					}
-				}
+		}
+		st.nextMustBeSep = true
+		numTok := Token{Line: st.line, Col: startCol, Start: start, End: st.pos - 1, Kind: Number, Value: inp[start:st.pos]}
+		if inp[firstDigitI] == '0' && firstDigitI+1 < len(inp) && inp[firstDigitI+1] >= '0' && inp[firstDigitI+1] <= '9' {
+			numTok.Kind = ErrorLeadingZerosNotPermitted
+			numTok.ErrorMsg = "Leading zeros not permitted in numbers"
+		}
+		return numTok, true
+	case '"':
+		start := st.pos
+		startCol := st.pos - st.lineStart
+		st.pos++
+		var val []byte
+		canUseInpSlice := true
+		for {
+			if st.pos >= len(inp) {
+				return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF in string"), true
 			}
-			if st.pos < len(inp) && (inp[st.pos] == 'e' || inp[st.pos] == 'E') {
-				st.pos++
-				if st.pos >= len(inp) {
-					return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF"), true
-				}
-				if inp[st.pos] == '+' || inp[st.pos] == '-' {
-					st.pos++
-				}
-				if st.pos >= len(inp) {
-					return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF"), true
-				}
-				if inp[st.pos] < '0' || inp[st.pos] > '9' {
-					st.pos++
-					return addErr(ErrorExpectedDigitFollowingEInNumber, st.line, st.pos-1-st.lineStart, "Expected digit following 'e' in number"), true
+			switch inp[st.pos] {
+			case '"':
+				if canUseInpSlice {
+					canUseInpSlice = false
+					val = inp[start+1 : st.pos]
 				}
 				st.pos++
-				for st.pos < len(inp) && inp[st.pos] >= '0' && inp[st.pos] <= '9' {
-					st.pos++
+				return Token{Line: st.line, Col: startCol, Start: start, End: st.pos - 1, Kind: String, Value: val}, true
+			case '\\':
+				if canUseInpSlice {
+					canUseInpSlice = false
+					val = append(val, inp[start+1:st.pos]...)
 				}
-			}
-			st.nextMustBeSep = true
-			numTok := Token{Line: st.line, Col: startCol, Start: start, End: st.pos - 1, Kind: Number, Value: inp[start:st.pos]}
-			if inp[firstDigitI] == '0' && firstDigitI+1 < len(inp) && inp[firstDigitI+1] >= '0' && inp[firstDigitI+1] <= '9' {
-				numTok.Kind = ErrorLeadingZerosNotPermitted
-				numTok.ErrorMsg = "Leading zeros not permitted in numbers"
-			}
-			return numTok, true
-		case '"':
-			start := st.pos
-			startCol := st.pos - st.lineStart
-			st.pos++
-			var val []byte
-			canUseInpSlice := true
-			for {
+				st.pos++
 				if st.pos >= len(inp) {
 					return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF in string"), true
 				}
 				switch inp[st.pos] {
-				case '"':
-					if canUseInpSlice {
-						canUseInpSlice = false
-						val = inp[start+1 : st.pos]
-					}
+				case '"', '\\', '/':
+					val = append(val, inp[st.pos])
 					st.pos++
-					return Token{Line: st.line, Col: startCol, Start: start, End: st.pos - 1, Kind: String, Value: val}, true
-				case '\\':
-					if canUseInpSlice {
-						canUseInpSlice = false
-						val = append(val, inp[start+1:st.pos]...)
-					}
+				case 'b':
+					val = append(val, '\b')
 					st.pos++
-					if st.pos >= len(inp) {
-						return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF in string"), true
+				case 'f':
+					val = append(val, '\f')
+					st.pos++
+				case 'n':
+					val = append(val, '\n')
+					st.pos++
+				case 'r':
+					val = append(val, '\r')
+					st.pos++
+				case 't':
+					val = append(val, '\t')
+					st.pos++
+				case 'u':
+					if st.pos+4 >= len(inp) {
+						return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF"), true
 					}
-					switch inp[st.pos] {
-					case '"', '\\', '/':
-						val = append(val, inp[st.pos])
-						st.pos++
-					case 'b':
-						val = append(val, '\b')
-						st.pos++
-					case 'f':
-						val = append(val, '\f')
-						st.pos++
-					case 'n':
-						val = append(val, '\n')
-						st.pos++
-					case 'r':
-						val = append(val, '\r')
-						st.pos++
-					case 't':
-						val = append(val, '\t')
-						st.pos++
-					case 'u':
-						if st.pos+4 >= len(inp) {
-							return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF"), true
-						}
-						d1 := hexVal(inp[st.pos+1])
-						d2 := hexVal(inp[st.pos+2])
-						d3 := hexVal(inp[st.pos+3])
-						d4 := hexVal(inp[st.pos+4])
-						if d1 == -1 || d2 == -1 || d3 == -1 || d4 == -1 {
-							st.pos += 5
-							return addErr(ErrorBadUnicodeEscape, st.line, st.pos-5-st.lineStart, "Bad '\\uXXXX' escape in string"), true
-						}
-						runeVal := d1*16*16*16 + d2*16*16 + d3*16 + d4
+					d1 := hexVal(inp[st.pos+1])
+					d2 := hexVal(inp[st.pos+2])
+					d3 := hexVal(inp[st.pos+3])
+					d4 := hexVal(inp[st.pos+4])
+					if d1 == -1 || d2 == -1 || d3 == -1 || d4 == -1 {
+						st.pos += 5
+						return addErr(ErrorBadUnicodeEscape, st.line, st.pos-5-st.lineStart, "Bad '\\uXXXX' escape in string"), true
+					}
+					runeVal := d1*16*16*16 + d2*16*16 + d3*16 + d4
 
-						if utf16.IsSurrogate(rune(runeVal)) && st.pos+10 < len(inp) && inp[st.pos+5] == '\\' && inp[st.pos+6] == 'u' {
-							d21 := hexVal(inp[st.pos+7])
-							d22 := hexVal(inp[st.pos+8])
-							d23 := hexVal(inp[st.pos+9])
-							d24 := hexVal(inp[st.pos+10])
-							if d21 == -1 || d22 == -1 || d23 == -1 || d24 == -1 {
-								st.pos += 11
-								return addErr(ErrorBadUnicodeEscape, st.line, st.pos-11+7-st.lineStart, "Bad '\\uXXXX' escape in string"), true
+					if utf16.IsSurrogate(rune(runeVal)) && st.pos+10 < len(inp) && inp[st.pos+5] == '\\' && inp[st.pos+6] == 'u' {
+						d21 := hexVal(inp[st.pos+7])
+						d22 := hexVal(inp[st.pos+8])
+						d23 := hexVal(inp[st.pos+9])
+						d24 := hexVal(inp[st.pos+10])
+						if d21 == -1 || d22 == -1 || d23 == -1 || d24 == -1 {
+							st.pos += 11
+							return addErr(ErrorBadUnicodeEscape, st.line, st.pos-11+7-st.lineStart, "Bad '\\uXXXX' escape in string"), true
+						}
+						rune2Val := d21*16*16*16 + d22*16*16 + d23*16 + d24
+						if utf16.IsSurrogate(rune(rune2Val)) {
+							runes := utf16.Decode([]uint16{uint16(runeVal), uint16(rune2Val)})
+							for _, r := range runes {
+								val = utf8.AppendRune(val, r)
 							}
-							rune2Val := d21*16*16*16 + d22*16*16 + d23*16 + d24
-							if utf16.IsSurrogate(rune(rune2Val)) {
-								runes := utf16.Decode([]uint16{uint16(runeVal), uint16(rune2Val)})
-								for _, r := range runes {
-									val = utf8.AppendRune(val, r)
-								}
-								st.pos += 6
-							} else {
-								// append the first one; leave the second for the next loop
-								// iteration
-								val = utf8.AppendRune(val, rune(runeVal))
-							}
+							st.pos += 6
 						} else {
+							// append the first one; leave the second for the next loop
+							// iteration
 							val = utf8.AppendRune(val, rune(runeVal))
 						}
-						st.pos += 5
-					default:
-						st.pos++
-						return addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected character after '\\' in string"), true
+					} else {
+						val = utf8.AppendRune(val, rune(runeVal))
 					}
+					st.pos += 5
 				default:
-					r, sz := utf8.DecodeRune(inp[st.pos:])
-					// DEL is permitted according to
-					// https://datatracker.ietf.org/doc/html/rfc7159
-					if unicode.IsControl(r) && r != 0x7F {
-						st.pos += sz
-						return addErr(ErrorIllegalControlCharInsideString, st.line, st.pos-sz-st.lineStart, "Illegal control char inside string"), true
-					}
-					if r == utf8.RuneError {
-						if sz == 0 {
-							return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside string"), true
-						} else {
-							st.pos += sz
-							return addErr(ErrorUTF8DecodingErrorInsideString, st.line, st.pos-sz-st.lineStart, "UTF-8 decoding error inside string"), true
-						}
-					}
-					if !canUseInpSlice {
-						val = append(val, inp[st.pos:st.pos+sz]...)
-					}
-					st.pos += max(sz, 1) // may be 0 if there was a decoding error
+					st.pos++
+					return addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected character after '\\' in string"), true
 				}
+			default:
+				r, sz := utf8.DecodeRune(inp[st.pos:])
+				// DEL is permitted according to
+				// https://datatracker.ietf.org/doc/html/rfc7159
+				if unicode.IsControl(r) && r != 0x7F {
+					st.pos += sz
+					return addErr(ErrorIllegalControlCharInsideString, st.line, st.pos-sz-st.lineStart, "Illegal control char inside string"), true
+				}
+				if r == utf8.RuneError {
+					if sz == 0 {
+						return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside string"), true
+					} else {
+						st.pos += sz
+						return addErr(ErrorUTF8DecodingErrorInsideString, st.line, st.pos-sz-st.lineStart, "UTF-8 decoding error inside string"), true
+					}
+				}
+				if !canUseInpSlice {
+					val = append(val, inp[st.pos:st.pos+sz]...)
+				}
+				st.pos += max(sz, 1) // may be 0 if there was a decoding error
 			}
-		default:
-			r, sz := utf8.DecodeRune(inp[st.pos:])
-			sz = max(1, sz) // sz could be 0 if error
-			st.pos += sz
-			return addErr(ErrorUnexpectedCharacter, st.line, st.pos-sz-st.lineStart, fmt.Sprintf("Unexpected char '%v'", r)), true
 		}
+	default:
+		r, sz := utf8.DecodeRune(inp[st.pos:])
+		sz = max(1, sz) // sz could be 0 if error
+		st.pos += sz
+		return addErr(ErrorUnexpectedCharacter, st.line, st.pos-sz-st.lineStart, fmt.Sprintf("Unexpected char '%v'", r)), true
 	}
 }
 
