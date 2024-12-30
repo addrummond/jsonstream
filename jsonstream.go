@@ -870,7 +870,7 @@ wsLoop:
 					}
 					if inp[st.pos] == '/' {
 						st.pos++
-						return Token{Line: startLine, Col: startCol, Start: start, End: st.pos - 1, Kind: Comment, Value: inp[start:st.pos]}, true
+						return Token{parser: p, Line: startLine, Col: startCol, Start: start, End: st.pos - 1, Kind: Comment, Value: inp[start:st.pos]}, true
 					}
 				}
 			}
@@ -884,7 +884,7 @@ wsLoop:
 					st.lineStart = st.pos
 					st.pos++
 					st.line++
-					return Token{Line: startLine, Col: startCol, Start: start, End: st.pos - 2, Kind: Comment, Value: inp[start : st.pos-1]}, true
+					return Token{parser: p, Line: startLine, Col: startCol, Start: start, End: st.pos - 2, Kind: Comment, Value: inp[start : st.pos-1]}, true
 				}
 			}
 		default:
@@ -893,22 +893,22 @@ wsLoop:
 		}
 	case ':':
 		st.pos++
-		return Token{Line: st.line, Col: st.pos - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: colon}, true
+		return Token{parser: p, Line: st.line, Col: st.pos - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: colon}, true
 	case ',':
 		st.pos++
-		return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: comma}, true
+		return Token{parser: p, Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: comma}, true
 	case '[':
 		st.pos++
-		return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ArrayStart}, true
+		return Token{parser: p, Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ArrayStart}, true
 	case '{':
 		st.pos++
-		return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ObjectStart}, true
+		return Token{parser: p, Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ObjectStart}, true
 	case ']':
 		st.pos++
-		return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ArrayEnd}, true
+		return Token{parser: p, Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ArrayEnd}, true
 	case '}':
 		st.pos++
-		return Token{Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ObjectEnd}, true
+		return Token{parser: p, Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ObjectEnd}, true
 	case 't':
 		start := st.pos
 		startCol := st.pos - st.lineStart
@@ -918,7 +918,7 @@ wsLoop:
 		}
 		st.pos += 4
 		st.nextMustBeSep = true
-		return Token{Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: True}, true
+		return Token{parser: p, Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: True}, true
 	case 'f':
 		start := st.pos
 		startCol := st.pos - st.lineStart
@@ -928,7 +928,7 @@ wsLoop:
 		}
 		st.pos += 5
 		st.nextMustBeSep = true
-		return Token{Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: False}, true
+		return Token{parser: p, Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: False}, true
 	case 'n':
 		start := st.pos
 		startCol := st.pos - st.lineStart
@@ -938,7 +938,7 @@ wsLoop:
 		}
 		st.pos += 4
 		st.nextMustBeSep = true
-		return Token{Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: Null}, true
+		return Token{parser: p, Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: Null}, true
 	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		start := st.pos
 		startCol := st.pos - st.lineStart
@@ -991,7 +991,7 @@ wsLoop:
 			}
 		}
 		st.nextMustBeSep = true
-		numTok := Token{Line: st.line, Col: startCol, Start: start, End: st.pos - 1, Kind: Number, Value: inp[start:st.pos]}
+		numTok := Token{parser: p, Line: st.line, Col: startCol, Start: start, End: st.pos - 1, Kind: Number, Value: inp[start:st.pos]}
 		if inp[firstDigitI] == '0' && firstDigitI+1 < len(inp) && inp[firstDigitI+1] >= '0' && inp[firstDigitI+1] <= '9' {
 			numTok.Kind = ErrorLeadingZerosNotPermitted
 			numTok.ErrorMsg = "Leading zeros not permitted in numbers"
@@ -1014,7 +1014,7 @@ wsLoop:
 					val = inp[start+1 : st.pos]
 				}
 				st.pos++
-				return Token{Line: st.line, Col: startCol, Start: start, End: st.pos - 1, Kind: String, Value: val}, true
+				return Token{parser: p, Line: st.line, Col: startCol, Start: start, End: st.pos - 1, Kind: String, Value: val}, true
 			case '\\':
 				if canUseInpSlice {
 					canUseInpSlice = false
