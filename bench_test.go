@@ -76,6 +76,11 @@ func BenchmarkJsonstream(b *testing.B) {
 			if IsError(t.Kind) {
 				b.Fatalf("Unexpected Tokenize error: %+v\n", t)
 			}
+			if t.Kind == Number {
+				t.AsInt()
+			} else if t.Kind == String {
+				t.AsString()
+			}
 		}
 	}
 }
