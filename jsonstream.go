@@ -1074,8 +1074,8 @@ wsLoop:
 							}
 							st.pos += 6
 						} else {
-							// append the first one; leave the second for the next loop
-							// iteration
+							// append the first one; leave the second for the next call to
+							// rawTokenize.
 							val = utf8.AppendRune(val, rune(runeVal))
 						}
 					} else {
