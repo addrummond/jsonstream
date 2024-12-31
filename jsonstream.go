@@ -1,4 +1,4 @@
-// Package jsonstreaœm provides a JSON tokenizer that reports line and
+// Package jsonstream provides a JSON tokenizer that reports line and
 // column information for tokens. It optionally supports /* */ and // comment
 // syntax as an extension to standard JSON.
 package jsonstream
