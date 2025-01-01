@@ -111,7 +111,9 @@ The `KeyAsString` method can be used to obtain a token's key as a string.
 JSONStream is written in a simple and straightforward style. It should perform
 acceptably for most purposes, but it is not intended to be an ultra high
 performance parsing library (such as e.g.
-[json-iterator](https://github.com/json-iterator/go)).
+[json-iterator](https://github.com/json-iterator/go)). Informal benchmarking
+suggests that performance is a little better than `encoding/json` (though much
+depends on whether and how you construct a parsed representation of the input).
 
 ## Examples
 
