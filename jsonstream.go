@@ -561,11 +561,10 @@ func (p *Parser) Tokenize(inp []byte) iter.Seq[Token] {
 		}
 	}
 
-	var main func(yield func(Token) bool)
 	var tokArray func(yield func(Token) bool) bool
 	var tokObject func(yield func(Token) bool) bool
 
-	main = func(yield func(Token) bool) {
+	main := func(yield func(Token) bool) {
 		yieldErr := func(errorKind Kind, line, col int, msg string) bool {
 			if !haltedOnComment {
 				err := mkErr(errorKind, line, col, msg)
