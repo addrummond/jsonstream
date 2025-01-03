@@ -267,7 +267,7 @@ func (p *Parser) DecodeError() error {
 	return (p.decodeErrors)[0]
 }
 
-// LastDecodeError returns the first decode error if any, or nil otherwise. A
+// LastDecodeError returns the last decode error if any, or nil otherwise. A
 // decode error is an error caused by invalid input to AsInt, AsInt32, AsInt64,
 // AsFloat32, or AsFloat64.
 func (p *Parser) LastDecodeError() error {
@@ -277,7 +277,7 @@ func (p *Parser) LastDecodeError() error {
 	return p.decodeErrors[len(p.decodeErrors)-1]
 }
 
-// LastDecodeError returns a slice containing all decode errors in the order
+// DecodeErrors returns a slice containing all decode errors in the order
 // they occurred. A decode error is an error occurring in AsInt, AsInt32,
 // AsInt64, AsFloat32, or AsFloat64.
 func (p *Parser) DecodeErrors() []error {
