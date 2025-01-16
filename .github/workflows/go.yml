@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - uses: docker/setup-qemu-action@v3
 
     - name: Set up Go
       uses: actions/setup-go@v4
@@ -26,4 +27,22 @@ jobs:
 
     - name: Test
       run: go test -v ./... -run . -bench .
+
+    # Cross-arch tests using the technique mentioned here:
+    #   https://news.ycombinator.com/item?id=42731879
+
+    - name: Test 386 (32-bit)
+      run: GOARCH=386 go test -v ./... -run .
+
+    - name: Test arm64 (compiler)
+      run: GOARCH=arm64 go test -v ./... -run .
+
+    - name: Test riscv64 (interpreter)
+      run: GOARCH=riscv64 go test -v ./... -run .
+
+    - name: Test ppc64le (interpreter)
+      run: GOARCH=ppc64le go test -v ./... -run .
+
+    - name: Test s390x (big-endian)
+      run: GOARCH=s390x go test -v ./... -run .
 
