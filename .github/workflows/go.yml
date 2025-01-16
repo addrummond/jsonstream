@@ -26,6 +26,8 @@ jobs:
       run: go build -v ./...
 
     - name: Test
+      # We also run the benchmarks because they do provide some incidental
+      # additional test coverage.
       run: go test -v ./... -run . -bench .
 
     # Cross-arch tests using the technique mentioned here:
