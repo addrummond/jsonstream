@@ -26,15 +26,15 @@ const (
 	// A ']' token
 	ArrayEnd
 	// A string
-	String Kind = iota | primval
+	String Kind = iota
 	// A number
-	Number Kind = iota | primval
+	Number Kind = iota
 	// A true boolean value
-	True Kind = iota | primval
+	True Kind = iota
 	// A false boolean value
-	False Kind = iota | primval
+	False Kind = iota
 	// A null value
-	Null Kind = iota | primval
+	Null Kind = iota
 	// A // or /* */ comment. If you need to distinguish between the two, you can
 	// look at the second byte of the token's Value field.
 	Comment Kind = iota
@@ -71,10 +71,7 @@ const (
 	comma
 )
 
-const (
-	isError = (1 << 29)
-	primval = (1 << 30)
-)
+const isError = (1 << 29)
 
 // IsError returns true for Error* token kinds and false for all others.
 func IsError(k Kind) bool {
