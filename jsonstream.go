@@ -56,7 +56,7 @@ const (
 	// Tokens with this kind can also be treated as tokens of kind Number, if you
 	// wish to be liberal in what you accept.
 	ErrorLeadingZerosNotPermitted
-	// A decimal point was not follwed by a digit.
+	// A decimal point was not followed by a digit.
 	ErrorExpectedDigitAfterDecimalPoint
 	// The 'e' (or 'E') in a number was not followed by a digit.
 	ErrorExpectedDigitFollowingEInNumber
