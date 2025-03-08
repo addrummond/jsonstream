@@ -1225,7 +1225,8 @@ wsLoop:
 				// Surprisingly, this crude 'optimization' makes an observable
 				// difference in performance. It seems that utf8.DecodeRune does not
 				// prioritize fast decoding of ASCII characters – but ASCII characters
-				// dominate in typical JSON input.
+				// dominate in typical JSON input. Or maybe it's just the overhead of
+				// copying the inp[st.pos:] struct for every function all?
 				var r rune
 				var sz int
 				if inp[st.pos] < 128 {
