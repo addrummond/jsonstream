@@ -819,7 +819,7 @@ func rawTokenize(p *Parser, st *rawTokenizeState, inp []byte, out *Token) bool {
 			st.nextMustBeSep = false
 		default:
 			st.pos++
-			*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected character")
+			*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart+1, "Unexpected character")
 			return true
 		}
 	}
@@ -848,7 +848,7 @@ wsLoop:
 		startCol := st.pos - st.lineStart + 1
 		st.pos++
 		if st.pos >= len(inp) {
-			*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-st.lineStart, "Unexpected '/'")
+			*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-st.lineStart+1, "Unexpected '/'")
 			return true
 		}
 		switch inp[st.pos] {
@@ -856,7 +856,7 @@ wsLoop:
 			for {
 				st.pos++
 				if st.pos >= len(inp) {
-					*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside comment")
+					*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart+1, "Unexpected EOF inside comment")
 					return true
 				}
 				if inp[st.pos] == '\n' {
@@ -866,7 +866,7 @@ wsLoop:
 				} else if inp[st.pos] == '*' {
 					st.pos++
 					if st.pos >= len(inp) {
-						*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside /* ... */ comment")
+						*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart+1, "Unexpected EOF inside /* ... */ comment")
 						return true
 					}
 					if inp[st.pos] == '/' {
@@ -888,7 +888,7 @@ wsLoop:
 			for {
 				st.pos++
 				if st.pos >= len(inp) {
-					*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside // comment")
+					*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart+1, "Unexpected EOF inside // comment")
 					return true
 				}
 				if inp[st.pos] == '\n' {
@@ -910,7 +910,7 @@ wsLoop:
 			}
 		default:
 			st.pos++
-			*out = addErr(ErrorUnexpectedToken, st.line, st.pos-1-st.lineStart, "Unexpected '/'")
+			*out = addErr(ErrorUnexpectedToken, st.line, st.pos-st.lineStart, "Unexpected '/'")
 			return true
 		}
 	case ':':
@@ -990,7 +990,7 @@ wsLoop:
 		startCol := st.pos - st.lineStart + 1
 		if st.pos+3 >= len(inp) || inp[st.pos+1] != 'r' || inp[st.pos+2] != 'u' || inp[st.pos+3] != 'e' {
 			st.pos++
-			*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected 't'")
+			*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-st.lineStart, "Unexpected 't'")
 			return true
 		}
 		st.pos += 4
@@ -1051,12 +1051,12 @@ wsLoop:
 		if inp[st.pos] == '-' {
 			st.pos++
 			if st.pos >= len(inp) {
-				*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF")
+				*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart+1, "Unexpected EOF")
 				return true
 			}
 			if inp[st.pos] < '0' || inp[st.pos] > '9' {
 				st.pos++
-				*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected char after '-'")
+				*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-st.lineStart, "Unexpected char after '-'")
 				return true
 			}
 		}
@@ -1069,7 +1069,7 @@ wsLoop:
 			st.pos++
 			if st.pos >= len(inp) || inp[st.pos] < '0' || inp[st.pos] > '9' {
 				st.pos++
-				*out = addErr(ErrorExpectedDigitAfterDecimalPoint, st.line, st.pos-1-st.lineStart, "Expected digit after '.' in number")
+				*out = addErr(ErrorExpectedDigitAfterDecimalPoint, st.line, st.pos-st.lineStart, "Expected digit after '.' in number")
 				return true
 			}
 			for {
@@ -1082,19 +1082,19 @@ wsLoop:
 		if st.pos < len(inp) && (inp[st.pos] == 'e' || inp[st.pos] == 'E') {
 			st.pos++
 			if st.pos >= len(inp) {
-				*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF")
+				*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart+1, "Unexpected EOF")
 				return true
 			}
 			if inp[st.pos] == '+' || inp[st.pos] == '-' {
 				st.pos++
 			}
 			if st.pos >= len(inp) {
-				*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF")
+				*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart+1, "Unexpected EOF")
 				return true
 			}
 			if inp[st.pos] < '0' || inp[st.pos] > '9' {
 				st.pos++
-				*out = addErr(ErrorExpectedDigitFollowingEInNumber, st.line, st.pos-1-st.lineStart, "Expected digit following 'e' in number")
+				*out = addErr(ErrorExpectedDigitFollowingEInNumber, st.line, st.pos-st.lineStart, "Expected digit following 'e' in number")
 				return true
 			}
 			st.pos++
@@ -1125,7 +1125,7 @@ wsLoop:
 		canUseInpSlice := true
 		for {
 			if st.pos >= len(inp) {
-				*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF in string")
+				*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart+1, "Unexpected EOF in string")
 				return true
 			}
 			switch inp[st.pos] {
@@ -1152,7 +1152,7 @@ wsLoop:
 				}
 				st.pos++
 				if st.pos >= len(inp) {
-					*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF in string")
+					*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart+1, "Unexpected EOF in string")
 					return true
 				}
 				switch inp[st.pos] {
@@ -1176,7 +1176,7 @@ wsLoop:
 					st.pos++
 				case 'u':
 					if st.pos+4 >= len(inp) {
-						*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF")
+						*out = addErr(ErrorUnexpectedEOF, st.line, st.pos+4-st.lineStart+1, "Unexpected EOF")
 						return true
 					}
 					d1 := hexVal(inp[st.pos+1])
@@ -1185,7 +1185,7 @@ wsLoop:
 					d4 := hexVal(inp[st.pos+4])
 					if d1 == -1 || d2 == -1 || d3 == -1 || d4 == -1 {
 						st.pos += 5
-						*out = addErr(ErrorBadUnicodeEscape, st.line, st.pos-5-st.lineStart, "Bad '\\uXXXX' escape in string")
+						*out = addErr(ErrorBadUnicodeEscape, st.line, st.pos-5-st.lineStart+1, "Bad '\\uXXXX' escape in string")
 						return true
 					}
 					runeVal := d1*16*16*16 + d2*16*16 + d3*16 + d4
@@ -1197,7 +1197,7 @@ wsLoop:
 						d24 := hexVal(inp[st.pos+10])
 						if d21 == -1 || d22 == -1 || d23 == -1 || d24 == -1 {
 							st.pos += 11
-							*out = addErr(ErrorBadUnicodeEscape, st.line, st.pos-11+7-st.lineStart, "Bad '\\uXXXX' escape in string")
+							*out = addErr(ErrorBadUnicodeEscape, st.line, st.pos-11+7-st.lineStart+1, "Bad '\\uXXXX' escape in string")
 							return true
 						}
 						rune2Val := d21*16*16*16 + d22*16*16 + d23*16 + d24
@@ -1218,7 +1218,7 @@ wsLoop:
 					st.pos += 5
 				default:
 					st.pos++
-					*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected character after '\\' in string")
+					*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-st.lineStart, "Unexpected character after '\\' in string")
 					return true
 				}
 			default:
@@ -1239,16 +1239,16 @@ wsLoop:
 				// https://datatracker.ietf.org/doc/html/rfc7159
 				if unicode.IsControl(r) && r != 0x7F {
 					st.pos += sz
-					*out = addErr(ErrorIllegalControlCharInsideString, st.line, st.pos-sz-st.lineStart, "Illegal control char inside string")
+					*out = addErr(ErrorIllegalControlCharInsideString, st.line, st.pos-sz-st.lineStart+1, "Illegal control char inside string")
 					return true
 				}
 				if r == utf8.RuneError {
 					if sz == 0 {
-						*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside string")
+						*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart+1, "Unexpected EOF inside string")
 						return true
 					} else {
 						st.pos += sz
-						*out = addErr(ErrorUTF8DecodingErrorInsideString, st.line, st.pos-sz-st.lineStart, "UTF-8 decoding error inside string")
+						*out = addErr(ErrorUTF8DecodingErrorInsideString, st.line, st.pos-sz-st.lineStart+1, "UTF-8 decoding error inside string")
 						return true
 					}
 				}
@@ -1264,7 +1264,7 @@ wsLoop:
 		r, sz := utf8.DecodeRune(inp[st.pos:])
 		sz = max(1, sz) // sz could be 0 if error
 		st.pos += sz
-		*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-sz-st.lineStart, fmt.Sprintf("Unexpected char '%v'", r))
+		*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-sz-st.lineStart+1, fmt.Sprintf("Unexpected char '%v'", r))
 		return true
 	}
 }
