@@ -538,10 +538,11 @@ func (p *Parser) Tokenize(inp []byte) iter.Seq[Token] {
 
 	next := func(yield func(Token) bool) (t Token, ok bool) {
 		if !p.AllowComments {
-			return rawTokenize(p, st, inp)
+			ok = rawTokenize(p, st, inp, &t)
+			return
 		}
 		for {
-			t, ok = rawTokenize(p, st, inp)
+			ok = rawTokenize(p, st, inp, &t)
 			if !ok {
 				return
 			}
@@ -801,7 +802,7 @@ type rawTokenizeState struct {
 	nextMustBeSep        bool
 }
 
-func rawTokenize(p *Parser, st *rawTokenizeState, inp []byte) (Token, bool) {
+func rawTokenize(p *Parser, st *rawTokenizeState, inp []byte, out *Token) bool {
 	addErr := func(errorKind Kind, line, col int, msg string) Token {
 		err := mkErr(errorKind, line, col, msg)
 		p.errors = append(p.errors, err)
@@ -809,7 +810,7 @@ func rawTokenize(p *Parser, st *rawTokenizeState, inp []byte) (Token, bool) {
 	}
 
 	if st.pos >= len(inp) {
-		return Token{}, false
+		return false
 	}
 
 	if st.nextMustBeSep {
@@ -818,7 +819,8 @@ func rawTokenize(p *Parser, st *rawTokenizeState, inp []byte) (Token, bool) {
 			st.nextMustBeSep = false
 		default:
 			st.pos++
-			return addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected character"), true
+			*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected character")
+			return true
 		}
 	}
 
@@ -832,7 +834,7 @@ wsLoop:
 		case ' ', '\r', '\t':
 			st.pos++
 			if st.pos >= len(inp) {
-				return Token{}, false
+				return false
 			}
 		default:
 			break wsLoop
@@ -843,17 +845,19 @@ wsLoop:
 	case '/':
 		start := st.pos
 		startLine := st.line
-		startCol := st.pos - st.lineStart
+		startCol := st.pos - st.lineStart + 1
 		st.pos++
 		if st.pos >= len(inp) {
-			return addErr(ErrorUnexpectedCharacter, st.line, st.pos-st.lineStart, "Unexpected '/'"), true
+			*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-st.lineStart, "Unexpected '/'")
+			return true
 		}
 		switch inp[st.pos] {
 		case '*':
 			for {
 				st.pos++
 				if st.pos >= len(inp) {
-					return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside comment"), true
+					*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside comment")
+					return true
 				}
 				if inp[st.pos] == '\n' {
 					st.line++
@@ -862,11 +866,21 @@ wsLoop:
 				} else if inp[st.pos] == '*' {
 					st.pos++
 					if st.pos >= len(inp) {
-						return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside /* ... */ comment"), true
+						*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside /* ... */ comment")
+						return true
 					}
 					if inp[st.pos] == '/' {
 						st.pos++
-						return Token{parser: p, Line: startLine, Col: startCol, Start: start, End: st.pos - 1, Kind: Comment, Value: inp[start:st.pos]}, true
+						out.parser = p
+						out.Line = startLine
+						out.Col = startCol
+						out.Start = start
+						out.End = st.pos - 1
+						out.Key = nil
+						out.Kind = Comment
+						out.Value = inp[start:st.pos]
+						out.ErrorMsg = ""
+						return true
 					}
 				}
 			}
@@ -874,78 +888,176 @@ wsLoop:
 			for {
 				st.pos++
 				if st.pos >= len(inp) {
-					return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside // comment"), true
+					*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside // comment")
+					return true
 				}
 				if inp[st.pos] == '\n' {
 					st.lineStart = st.pos
 					st.pos++
 					st.line++
-					return Token{parser: p, Line: startLine, Col: startCol, Start: start, End: st.pos - 2, Kind: Comment, Value: inp[start : st.pos-1]}, true
+
+					out.parser = p
+					out.Line = startLine
+					out.Col = startCol
+					out.Start = start
+					out.End = st.pos - 2
+					out.Key = nil
+					out.Kind = Comment
+					out.Value = inp[start : st.pos-1]
+					out.ErrorMsg = ""
+					return true
 				}
 			}
 		default:
 			st.pos++
-			return addErr(ErrorUnexpectedToken, st.line, st.pos-1-st.lineStart, "Unexpected '/'"), true
+			*out = addErr(ErrorUnexpectedToken, st.line, st.pos-1-st.lineStart, "Unexpected '/'")
+			return true
 		}
 	case ':':
+		out.parser = p
+		out.Line = st.line
+		out.Col = st.pos - st.lineStart + 1
+		out.Start = st.pos
+		out.End = st.pos
+		out.Key = nil
+		out.Kind = colon
+		out.Value = nil
+		out.ErrorMsg = ""
 		st.pos++
-		return Token{parser: p, Line: st.line, Col: st.pos - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: colon}, true
+		return true
 	case ',':
+		out.parser = p
+		out.Line = st.line
+		out.Col = st.pos - st.lineStart + 1
+		out.Start = st.pos
+		out.End = st.pos
+		out.Key = nil
+		out.Kind = comma
+		out.Value = nil
+		out.ErrorMsg = ""
 		st.pos++
-		return Token{parser: p, Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: comma}, true
+		return true
 	case '[':
+		out.parser = p
+		out.Line = st.line
+		out.Col = st.pos - st.lineStart + 1
+		out.Start = st.pos
+		out.End = st.pos
+		out.Key = nil
+		out.Kind = ArrayStart
+		out.Value = nil
+		out.ErrorMsg = ""
 		st.pos++
-		return Token{parser: p, Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ArrayStart}, true
+		return true
 	case '{':
+		out.parser = p
+		out.Line = st.line
+		out.Col = st.pos - st.lineStart + 1
+		out.Start = st.pos
+		out.End = st.pos
+		out.Key = nil
+		out.Kind = ObjectStart
+		out.Value = nil
+		out.ErrorMsg = ""
 		st.pos++
-		return Token{parser: p, Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ObjectStart}, true
+		return true
 	case ']':
+		out.parser = p
+		out.Line = st.line
+		out.Col = st.pos - st.lineStart + 1
+		out.Start = st.pos
+		out.End = st.pos
+		out.Key = nil
+		out.Kind = ArrayEnd
+		out.Value = nil
+		out.ErrorMsg = ""
 		st.pos++
-		return Token{parser: p, Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ArrayEnd}, true
+		return true
 	case '}':
+		out.parser = p
+		out.Line = st.line
+		out.Col = st.pos - st.lineStart + 1
+		out.Start = st.pos
+		out.End = st.pos
+		out.Key = nil
+		out.Kind = ObjectEnd
+		out.Value = nil
+		out.ErrorMsg = ""
 		st.pos++
-		return Token{parser: p, Line: st.line, Col: st.pos - 1 - st.lineStart, Start: st.pos - 1, End: st.pos - 1, Kind: ObjectEnd}, true
+		return true
 	case 't':
 		start := st.pos
-		startCol := st.pos - st.lineStart
+		startCol := st.pos - st.lineStart + 1
 		if st.pos+3 >= len(inp) || inp[st.pos+1] != 'r' || inp[st.pos+2] != 'u' || inp[st.pos+3] != 'e' {
 			st.pos++
-			return addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected 't'"), true
+			*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected 't'")
+			return true
 		}
 		st.pos += 4
 		st.nextMustBeSep = true
-		return Token{parser: p, Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: True}, true
+		out.parser = p
+		out.Line = st.line
+		out.Col = startCol
+		out.Start = start
+		out.End = st.pos - 1
+		out.Key = nil
+		out.Kind = True
+		out.Value = nil
+		out.ErrorMsg = ""
+		return true
 	case 'f':
 		start := st.pos
-		startCol := st.pos - st.lineStart
+		startCol := st.pos - st.lineStart + 1
 		if st.pos+4 >= len(inp) || inp[st.pos+1] != 'a' || inp[st.pos+2] != 'l' || inp[st.pos+3] != 's' || inp[st.pos+4] != 'e' {
 			st.pos++
-			return addErr(ErrorUnexpectedCharacter, st.line, startCol, "Unexpected 'f'"), true
+			*out = addErr(ErrorUnexpectedCharacter, st.line, startCol, "Unexpected 'f'")
+			return true
 		}
 		st.pos += 5
 		st.nextMustBeSep = true
-		return Token{parser: p, Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: False}, true
+		out.parser = p
+		out.Line = st.line
+		out.Col = startCol
+		out.Start = start
+		out.End = st.pos - 1
+		out.Key = nil
+		out.Kind = False
+		out.Value = nil
+		out.ErrorMsg = ""
+		return true
 	case 'n':
 		start := st.pos
-		startCol := st.pos - st.lineStart
+		startCol := st.pos - st.lineStart + 1
 		if st.pos+3 >= len(inp) || inp[st.pos+1] != 'u' || inp[st.pos+2] != 'l' || inp[st.pos+3] != 'l' {
 			st.pos++
-			return addErr(ErrorUnexpectedCharacter, st.line, startCol, "Unexpected 'n'"), true
+			*out = addErr(ErrorUnexpectedCharacter, st.line, startCol, "Unexpected 'n'")
+			return true
 		}
 		st.pos += 4
 		st.nextMustBeSep = true
-		return Token{parser: p, Line: st.line, Col: startCol, Start: start, End: st.pos, Kind: Null}, true
+		out.parser = p
+		out.Line = st.line
+		out.Col = startCol
+		out.Start = start
+		out.End = st.pos - 1
+		out.Key = nil
+		out.Kind = Null
+		out.Value = nil
+		out.ErrorMsg = ""
+		return true
 	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		start := st.pos
-		startCol := st.pos - st.lineStart
+		startCol := st.pos - st.lineStart + 1
 		if inp[st.pos] == '-' {
 			st.pos++
 			if st.pos >= len(inp) {
-				return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF"), true
+				*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF")
+				return true
 			}
 			if inp[st.pos] < '0' || inp[st.pos] > '9' {
 				st.pos++
-				return addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected char after '-'"), true
+				*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected char after '-'")
+				return true
 			}
 		}
 		firstDigitI := st.pos // we'll check later for a leading zero here
@@ -957,7 +1069,8 @@ wsLoop:
 			st.pos++
 			if st.pos >= len(inp) || inp[st.pos] < '0' || inp[st.pos] > '9' {
 				st.pos++
-				return addErr(ErrorExpectedDigitAfterDecimalPoint, st.line, st.pos-1-st.lineStart, "Expected digit after '.' in number"), true
+				*out = addErr(ErrorExpectedDigitAfterDecimalPoint, st.line, st.pos-1-st.lineStart, "Expected digit after '.' in number")
+				return true
 			}
 			for {
 				st.pos++
@@ -969,17 +1082,20 @@ wsLoop:
 		if st.pos < len(inp) && (inp[st.pos] == 'e' || inp[st.pos] == 'E') {
 			st.pos++
 			if st.pos >= len(inp) {
-				return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF"), true
+				*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF")
+				return true
 			}
 			if inp[st.pos] == '+' || inp[st.pos] == '-' {
 				st.pos++
 			}
 			if st.pos >= len(inp) {
-				return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF"), true
+				*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF")
+				return true
 			}
 			if inp[st.pos] < '0' || inp[st.pos] > '9' {
 				st.pos++
-				return addErr(ErrorExpectedDigitFollowingEInNumber, st.line, st.pos-1-st.lineStart, "Expected digit following 'e' in number"), true
+				*out = addErr(ErrorExpectedDigitFollowingEInNumber, st.line, st.pos-1-st.lineStart, "Expected digit following 'e' in number")
+				return true
 			}
 			st.pos++
 			for st.pos < len(inp) && inp[st.pos] >= '0' && inp[st.pos] <= '9' {
@@ -987,21 +1103,30 @@ wsLoop:
 			}
 		}
 		st.nextMustBeSep = true
-		numTok := Token{parser: p, Line: st.line, Col: startCol, Start: start, End: st.pos - 1, Kind: Number, Value: inp[start:st.pos]}
+		out.parser = p
+		out.Line = st.line
+		out.Col = startCol
+		out.Start = start
+		out.End = st.pos - 1
+		out.Key = nil
+		out.Kind = Number
+		out.Value = inp[start:st.pos]
+		out.ErrorMsg = ""
 		if inp[firstDigitI] == '0' && firstDigitI+1 < len(inp) && inp[firstDigitI+1] >= '0' && inp[firstDigitI+1] <= '9' {
-			numTok.Kind = ErrorLeadingZerosNotPermitted
-			numTok.ErrorMsg = "Leading zeros not permitted in numbers"
+			out.Kind = ErrorLeadingZerosNotPermitted
+			out.ErrorMsg = "Leading zeros not permitted in numbers"
 		}
-		return numTok, true
+		return true
 	case '"':
 		start := st.pos
-		startCol := st.pos - st.lineStart
+		startCol := st.pos - st.lineStart + 1
 		st.pos++
 		var val []byte
 		canUseInpSlice := true
 		for {
 			if st.pos >= len(inp) {
-				return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF in string"), true
+				*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF in string")
+				return true
 			}
 			switch inp[st.pos] {
 			case '"':
@@ -1010,7 +1135,16 @@ wsLoop:
 					val = inp[start+1 : st.pos]
 				}
 				st.pos++
-				return Token{parser: p, Line: st.line, Col: startCol, Start: start, End: st.pos - 1, Kind: String, Value: val}, true
+				out.parser = p
+				out.Line = st.line
+				out.Col = startCol
+				out.Start = start
+				out.End = st.pos - 1
+				out.Key = nil
+				out.Kind = String
+				out.Value = val
+				out.ErrorMsg = ""
+				return true
 			case '\\':
 				if canUseInpSlice {
 					canUseInpSlice = false
@@ -1018,7 +1152,8 @@ wsLoop:
 				}
 				st.pos++
 				if st.pos >= len(inp) {
-					return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF in string"), true
+					*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF in string")
+					return true
 				}
 				switch inp[st.pos] {
 				case '"', '\\', '/':
@@ -1041,7 +1176,8 @@ wsLoop:
 					st.pos++
 				case 'u':
 					if st.pos+4 >= len(inp) {
-						return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF"), true
+						*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF")
+						return true
 					}
 					d1 := hexVal(inp[st.pos+1])
 					d2 := hexVal(inp[st.pos+2])
@@ -1049,7 +1185,8 @@ wsLoop:
 					d4 := hexVal(inp[st.pos+4])
 					if d1 == -1 || d2 == -1 || d3 == -1 || d4 == -1 {
 						st.pos += 5
-						return addErr(ErrorBadUnicodeEscape, st.line, st.pos-5-st.lineStart, "Bad '\\uXXXX' escape in string"), true
+						*out = addErr(ErrorBadUnicodeEscape, st.line, st.pos-5-st.lineStart, "Bad '\\uXXXX' escape in string")
+						return true
 					}
 					runeVal := d1*16*16*16 + d2*16*16 + d3*16 + d4
 
@@ -1060,7 +1197,8 @@ wsLoop:
 						d24 := hexVal(inp[st.pos+10])
 						if d21 == -1 || d22 == -1 || d23 == -1 || d24 == -1 {
 							st.pos += 11
-							return addErr(ErrorBadUnicodeEscape, st.line, st.pos-11+7-st.lineStart, "Bad '\\uXXXX' escape in string"), true
+							*out = addErr(ErrorBadUnicodeEscape, st.line, st.pos-11+7-st.lineStart, "Bad '\\uXXXX' escape in string")
+							return true
 						}
 						rune2Val := d21*16*16*16 + d22*16*16 + d23*16 + d24
 						if utf16.IsSurrogate(rune(rune2Val)) {
@@ -1080,7 +1218,8 @@ wsLoop:
 					st.pos += 5
 				default:
 					st.pos++
-					return addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected character after '\\' in string"), true
+					*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-1-st.lineStart, "Unexpected character after '\\' in string")
+					return true
 				}
 			default:
 				r, sz := utf8.DecodeRune(inp[st.pos:])
@@ -1088,14 +1227,17 @@ wsLoop:
 				// https://datatracker.ietf.org/doc/html/rfc7159
 				if unicode.IsControl(r) && r != 0x7F {
 					st.pos += sz
-					return addErr(ErrorIllegalControlCharInsideString, st.line, st.pos-sz-st.lineStart, "Illegal control char inside string"), true
+					*out = addErr(ErrorIllegalControlCharInsideString, st.line, st.pos-sz-st.lineStart, "Illegal control char inside string")
+					return true
 				}
 				if r == utf8.RuneError {
 					if sz == 0 {
-						return addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside string"), true
+						*out = addErr(ErrorUnexpectedEOF, st.line, st.pos-st.lineStart, "Unexpected EOF inside string")
+						return true
 					} else {
 						st.pos += sz
-						return addErr(ErrorUTF8DecodingErrorInsideString, st.line, st.pos-sz-st.lineStart, "UTF-8 decoding error inside string"), true
+						*out = addErr(ErrorUTF8DecodingErrorInsideString, st.line, st.pos-sz-st.lineStart, "UTF-8 decoding error inside string")
+						return true
 					}
 				}
 				if !canUseInpSlice {
@@ -1108,7 +1250,8 @@ wsLoop:
 		r, sz := utf8.DecodeRune(inp[st.pos:])
 		sz = max(1, sz) // sz could be 0 if error
 		st.pos += sz
-		return addErr(ErrorUnexpectedCharacter, st.line, st.pos-sz-st.lineStart, fmt.Sprintf("Unexpected char '%v'", r)), true
+		*out = addErr(ErrorUnexpectedCharacter, st.line, st.pos-sz-st.lineStart, fmt.Sprintf("Unexpected char '%v'", r))
+		return true
 	}
 }
 

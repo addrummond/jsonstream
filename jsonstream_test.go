@@ -48,25 +48,25 @@ func TestTokenize(t *testing.T) {
 `
 
 		const expectedTokSeq = `
-{2:1 ArrayStart }
-{2:2 String xxx}
-{2:9 ArrayStart }
-{2:10 String baAr}
-{2:21 ArrayEnd }
-{2:24 String yyy}
-{2:31 ArrayStart }
-{2:33 Comment /* a comment inside */}
-{2:56 ArrayEnd }
-{2:58 Comment // a comment}
-{3:3 ObjectStart }
-{3:11 String aaa=bbb}
-{3:23 String x=y}
-{3:26 ObjectEnd }
-{3:29 String bbb}
-{3:36 ObjectStart }
-{3:48 Number numeric=1.4e-99}
-{3:56 ObjectEnd }
-{3:58 ArrayEnd }
+{2:2 ArrayStart }
+{2:3 String xxx}
+{2:10 ArrayStart }
+{2:11 String baAr}
+{2:22 ArrayEnd }
+{2:25 String yyy}
+{2:32 ArrayStart }
+{2:34 Comment /* a comment inside */}
+{2:57 ArrayEnd }
+{2:59 Comment // a comment}
+{3:4 ObjectStart }
+{3:12 String aaa=bbb}
+{3:24 String x=y}
+{3:27 ObjectEnd }
+{3:30 String bbb}
+{3:37 ObjectStart }
+{3:49 Number numeric=1.4e-99}
+{3:57 ObjectEnd }
+{3:59 ArrayEnd }
 `
 		t.Logf("%v\n", tokSeq(input, allowComments))
 
@@ -82,23 +82,23 @@ func TestTokenize(t *testing.T) {
 `
 
 		const expectedTokSeq = `
-{2:1 ArrayStart }
-{2:2 String xxx}
-{2:9 ArrayStart }
-{2:10 String baAr}
-{2:21 ArrayEnd }
-{2:24 String yyy}
-{2:31 ArrayStart }
-{2:33 ArrayEnd }
-{3:3 ObjectStart }
-{3:11 String aaa=bbb}
-{3:23 String x=y}
-{3:26 ObjectEnd }
-{3:29 String bbb}
-{3:36 ObjectStart }
-{3:48 Number numeric=1.4e-99}
-{3:56 ObjectEnd }
-{3:58 ArrayEnd }
+{2:2 ArrayStart }
+{2:3 String xxx}
+{2:10 ArrayStart }
+{2:11 String baAr}
+{2:22 ArrayEnd }
+{2:25 String yyy}
+{2:32 ArrayStart }
+{2:34 ArrayEnd }
+{3:4 ObjectStart }
+{3:12 String aaa=bbb}
+{3:24 String x=y}
+{3:27 ObjectEnd }
+{3:30 String bbb}
+{3:37 ObjectStart }
+{3:49 Number numeric=1.4e-99}
+{3:57 ObjectEnd }
+{3:59 ArrayEnd }
 `
 		t.Logf("%v\n", tokSeq(input, allowComments))
 
@@ -114,26 +114,26 @@ func TestTokenize(t *testing.T) {
 `
 
 		const expectedTokSeq = `
-{2:1 ArrayStart }
-{2:2 String xxx}
-{2:9 ArrayStart }
-{2:10 String baAr}
-{2:21 ArrayEnd }
-{2:24 String yyy}
-{2:31 ArrayStart }
-{2:33 Error: Unexpected token inside array}
-{2:56 ArrayEnd }
-{2:58 Error: Unexpected token inside array (expecting ',')}
-{3:1 Error: Unexpected ',' inside array}
-{3:3 ObjectStart }
-{3:11 String aaa=bbb}
-{3:23 String x=y}
-{3:26 ObjectEnd }
-{3:29 String bbb}
-{3:36 ObjectStart }
-{3:48 Number numeric=1.4e-99}
-{3:56 ObjectEnd }
-{3:58 ArrayEnd }
+{2:2 ArrayStart }
+{2:3 String xxx}
+{2:10 ArrayStart }
+{2:11 String baAr}
+{2:22 ArrayEnd }
+{2:25 String yyy}
+{2:32 ArrayStart }
+{2:34 Error: Unexpected token inside array}
+{2:57 ArrayEnd }
+{2:59 Error: Unexpected token inside array (expecting ',')}
+{3:2 Error: Unexpected ',' inside array}
+{3:4 ObjectStart }
+{3:12 String aaa=bbb}
+{3:24 String x=y}
+{3:27 ObjectEnd }
+{3:30 String bbb}
+{3:37 ObjectStart }
+{3:49 Number numeric=1.4e-99}
+{3:57 ObjectEnd }
+{3:59 ArrayEnd }
 `
 
 		t.Logf("%v\n", tokSeq(input, disallowComments))
@@ -147,15 +147,15 @@ func TestTokenize(t *testing.T) {
 		t.Run("Number with leading zeros", func(t *testing.T) {
 			const input = `{"foo": 01, "bar": [02, -01, 3, 0e2]}`
 			const expectedTokSeq = `
-{1:0 ObjectStart }
-{1:8 Error: Leading zeros not permitted in numbers}
-{1:19 ArrayStart bar=}
-{1:20 Error: Leading zeros not permitted in numbers}
-{1:24 Error: Leading zeros not permitted in numbers}
-{1:29 Number 3}
-{1:32 Number 0e2}
-{1:35 ArrayEnd }
-{1:36 ObjectEnd }
+{1:1 ObjectStart }
+{1:9 Error: Leading zeros not permitted in numbers}
+{1:20 ArrayStart bar=}
+{1:21 Error: Leading zeros not permitted in numbers}
+{1:25 Error: Leading zeros not permitted in numbers}
+{1:30 Number 3}
+{1:33 Number 0e2}
+{1:36 ArrayEnd }
+{1:37 ObjectEnd }
 `
 
 			t.Logf("%v\n", tokSeq(input, allowComments))
