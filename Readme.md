@@ -106,6 +106,12 @@ Token{Kind: ObjectEnd, ...}
 
 The `KeyAsString` method can be used to obtain a token's key as a string.
 
+### Source position information
+
+Each token has `Line` and `Col` fields for the start of the token, and `Start`
+and `End` fields giving the indices of the first and last byte of the token in
+the input.
+
 ## Performance
 
 JSONStream is written in a simple and straightforward style. It should perform
