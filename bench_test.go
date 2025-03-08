@@ -84,3 +84,11 @@ func BenchmarkJsonstream(b *testing.B) {
 		}
 	}
 }
+
+// Notes on benchmarking:
+//
+// Run just the jsonstream benchmark with profiling:
+//   go test -run '^$' -bench BenchmarkJsonstream -benchmem -cpuprofile profile.out
+// View the profiling data:
+//   go tool pprof profile.out
+//     (inside pprof) top # view basic perf data
