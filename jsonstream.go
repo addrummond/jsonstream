@@ -1222,7 +1222,19 @@ wsLoop:
 					return true
 				}
 			default:
-				r, sz := utf8.DecodeRune(inp[st.pos:])
+				// Surprisingly, this crude 'optimization' makes an observable
+				// difference in performance. It seems that utf8.DecodeRune does not
+				// prioritize fast decoding of ASCII characters – but ASCII characters
+				// dominate in typical JSON input.
+				var r rune
+				var sz int
+				if inp[st.pos] < 128 {
+					r = rune(inp[st.pos])
+					sz = 1
+				} else {
+					r, sz = utf8.DecodeRune(inp[st.pos:])
+				}
+
 				// DEL is permitted according to
 				// https://datatracker.ietf.org/doc/html/rfc7159
 				if unicode.IsControl(r) && r != 0x7F {
@@ -1247,6 +1259,8 @@ wsLoop:
 			}
 		}
 	default:
+		// Not inlining the ASCII check here as we get here only on error, so not
+		// performance critical.
 		r, sz := utf8.DecodeRune(inp[st.pos:])
 		sz = max(1, sz) // sz could be 0 if error
 		st.pos += sz
