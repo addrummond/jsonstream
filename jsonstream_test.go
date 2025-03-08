@@ -44,33 +44,36 @@ func TestTokenize(t *testing.T) {
 	t.Run("with comment stripping", func(t *testing.T) {
 		const input = `
 ["xxx", ["ba\u0041r"], "yyy", [ /* a comment inside */ ] // a comment
-, {"aaa": "bbb", "x": "y"}, "bbb", {"numeric": 1.4e-99 } ]
+, {"aaa": "bbb", "x": "y"}, "bbb", {"numeric": 1.4e-99 }, true, false, null ]
 `
 
 		const expectedTokSeq = `
-{2:2 ArrayStart }
-{2:3 String xxx}
-{2:10 ArrayStart }
-{2:11 String baAr}
-{2:22 ArrayEnd }
-{2:25 String yyy}
-{2:32 ArrayStart }
-{2:34 Comment /* a comment inside */}
-{2:57 ArrayEnd }
-{2:59 Comment // a comment}
-{3:4 ObjectStart }
-{3:12 String aaa=bbb}
-{3:24 String x=y}
-{3:27 ObjectEnd }
-{3:30 String bbb}
-{3:37 ObjectStart }
-{3:49 Number numeric=1.4e-99}
-{3:57 ObjectEnd }
-{3:59 ArrayEnd }
+{2:2 ArrayStart } |[|
+{2:3 String xxx} |"xxx"|
+{2:10 ArrayStart } |[|
+{2:11 String baAr} |"ba\u0041r"|
+{2:22 ArrayEnd } |]|
+{2:25 String yyy} |"yyy"|
+{2:32 ArrayStart } |[|
+{2:34 Comment /* a comment inside */} |/* a comment inside */|
+{2:57 ArrayEnd } |]|
+{2:59 Comment // a comment} |// a comment|
+{3:4 ObjectStart } |{|
+{3:12 String aaa=bbb} |"bbb"|
+{3:24 String x=y} |"y"|
+{3:27 ObjectEnd } |}|
+{3:30 String bbb} |"bbb"|
+{3:37 ObjectStart } |{|
+{3:49 Number numeric=1.4e-99} |1.4e-99|
+{3:57 ObjectEnd } |}|
+{3:60 True } |true|
+{3:66 False } |false|
+{3:73 Null } |null|
+{3:78 ArrayEnd } |]|
 `
-		t.Logf("%v\n", tokSeq(input, allowComments))
+		t.Logf("%v\n", tokSeq(input, allowComments, withCorrespondingSourceText))
 
-		if strings.TrimSpace(expectedTokSeq) != strings.TrimSpace(tokSeq(input, allowComments)) {
+		if strings.TrimSpace(expectedTokSeq) != strings.TrimSpace(tokSeq(input, allowComments, withCorrespondingSourceText)) {
 			t.Fatalf("Unexpected token sequence")
 		}
 	})
@@ -100,9 +103,9 @@ func TestTokenize(t *testing.T) {
 {3:57 ObjectEnd }
 {3:59 ArrayEnd }
 `
-		t.Logf("%v\n", tokSeq(input, allowComments))
+		t.Logf("%v\n", tokSeq(input, allowComments, withoutCorrespondingSourceText))
 
-		if strings.TrimSpace(expectedTokSeq) != strings.TrimSpace(tokSeq(input, disallowComments)) {
+		if strings.TrimSpace(expectedTokSeq) != strings.TrimSpace(tokSeq(input, disallowComments, withoutCorrespondingSourceText)) {
 			t.Fatalf("Unexpected token sequence")
 		}
 	})
@@ -136,9 +139,9 @@ func TestTokenize(t *testing.T) {
 {3:59 ArrayEnd }
 `
 
-		t.Logf("%v\n", tokSeq(input, disallowComments))
+		t.Logf("%v\n", tokSeq(input, disallowComments, withoutCorrespondingSourceText))
 
-		if strings.TrimSpace(expectedTokSeq) != strings.TrimSpace(tokSeq(input, disallowComments)) {
+		if strings.TrimSpace(expectedTokSeq) != strings.TrimSpace(tokSeq(input, disallowComments, withoutCorrespondingSourceText)) {
 			t.Fatalf("Unexpected token sequence")
 		}
 	})
@@ -158,9 +161,9 @@ func TestTokenize(t *testing.T) {
 {1:37 ObjectEnd }
 `
 
-			t.Logf("%v\n", tokSeq(input, allowComments))
+			t.Logf("%v\n", tokSeq(input, allowComments, withoutCorrespondingSourceText))
 
-			if strings.TrimSpace(expectedTokSeq) != strings.TrimSpace(tokSeq(input, disallowComments)) {
+			if strings.TrimSpace(expectedTokSeq) != strings.TrimSpace(tokSeq(input, disallowComments, withoutCorrespondingSourceText)) {
 				t.Fatalf("Unexpected token sequence")
 			}
 		})
@@ -491,7 +494,10 @@ func TestTrailingInput(t *testing.T) {
 const allowComments = 0
 const disallowComments = 1
 
-func tokSeq(inp string, comments int) string {
+const withCorrespondingSourceText = 0
+const withoutCorrespondingSourceText = 1
+
+func tokSeq(inp string, comments, correspondingSourceText int) string {
 	var sb strings.Builder
 	i := 0
 
@@ -505,6 +511,9 @@ func tokSeq(inp string, comments int) string {
 			sb.WriteByte('\n')
 		}
 		sb.WriteString(fmt.Sprintf("{%v}", t))
+		if withCorrespondingSourceText == correspondingSourceText {
+			sb.WriteString(fmt.Sprintf(" |%s|", inp[t.Start:t.End+1]))
+		}
 		i++
 	}
 	return sb.String()
